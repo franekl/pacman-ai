@@ -6,7 +6,7 @@ from entity import Entity
 from sprites import PacmanSprites
 
 class Pacman(Entity):
-    def __init__(self, node):
+    def __init__(self, node, nodes):
         Entity.__init__(self, node )
         self.name = PACMAN    
         self.color = YELLOW
@@ -14,6 +14,7 @@ class Pacman(Entity):
         self.setBetweenNodes(LEFT)
         self.alive = True
         self.sprites = PacmanSprites(self)
+        self.nodes = nodes
 
     def reset(self):
         Entity.reset(self)
@@ -76,3 +77,6 @@ class Pacman(Entity):
         if dSquared <= rSquared:
             return True
         return False
+
+    def get_dijkstra_distance(self, ghost):
+        pass

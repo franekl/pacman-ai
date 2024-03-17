@@ -4,13 +4,15 @@ from constants import *
 import numpy as np
 
 class Node(object):
-    def __init__(self, x, y):
+    def __init__(self, x, y, row, col):
         self.position = Vector2(x, y)
         self.neighbors = {UP:None, DOWN:None, LEFT:None, RIGHT:None, PORTAL:None}
         self.access = {UP:[PACMAN, BLINKY, PINKY, INKY, CLYDE, FRUIT], 
                        DOWN:[PACMAN, BLINKY, PINKY, INKY, CLYDE, FRUIT], 
                        LEFT:[PACMAN, BLINKY, PINKY, INKY, CLYDE, FRUIT], 
                        RIGHT:[PACMAN, BLINKY, PINKY, INKY, CLYDE, FRUIT]}
+        self.row = row
+        self.col = col
 
     def denyAccess(self, direction, entity):
         if entity.name in self.access[direction]:
@@ -27,7 +29,6 @@ class Node(object):
                 line_end = self.neighbors[n].position.asTuple()
                 pygame.draw.line(screen, WHITE, line_start, line_end, 4)
                 pygame.draw.circle(screen, RED, self.position.asInt(), 12)
-
 
 class NodeGroup(object):
     def __init__(self, level):
@@ -49,7 +50,7 @@ class NodeGroup(object):
             for col in list(range(data.shape[1])):
                 if data[row][col] in self.nodeSymbols:
                     x, y = self.constructKey(col+xoffset, row+yoffset)
-                    self.nodesLUT[(x, y)] = Node(x, y)
+                    self.nodesLUT[(x, y)] = Node(x, y, row, col)
 
     def constructKey(self, x, y):
         return x * TILEWIDTH, y * TILEHEIGHT
