@@ -4,6 +4,7 @@ from vector import Vector2
 from constants import *
 from entity import Entity
 from sprites import PacmanSprites
+from algorithms import *
 
 class Pacman(Entity):
     def __init__(self, node, nodes):
@@ -24,6 +25,9 @@ class Pacman(Entity):
         self.image = self.sprites.getStartImage()
         self.sprites.reset()
 
+    def setGhostGroup(self, ghosts):
+        self.ghosts = ghosts
+
     def die(self):
         self.alive = False
         self.direction = STOP
@@ -31,7 +35,8 @@ class Pacman(Entity):
     def update(self, dt):	
         self.sprites.update(dt)
         self.position += self.directions[self.direction]*self.speed*dt
-        direction = self.getValidKey()
+        # direction = self.getValidKey()
+        direction = self.findPathToNearestPellet()
         if self.overshotTarget():
             self.node = self.target
             if self.node.neighbors[PORTAL] is not None:
@@ -48,6 +53,36 @@ class Pacman(Entity):
         else: 
             if self.oppositeDirection(direction):
                 self.reverseDirection()
+
+
+    def findPathToNearestPellet(self):
+        previous_nodes, shortest_path = dijkstra(self.nodes, self.node)
+        nearest_pellet = None
+        min_path_len = float('inf')
+
+        for pellet in self.pellets:
+            if pellet in shortest_path and shortest_path[pellet] < min_path_len:
+                nearest_pellet = pellet
+                min_path_len = shortest_path[pellet]
+
+        if nearest_pellet is None:
+            return None  # No path found
+
+        # Backtrack from nearest pellet to start node to find path
+        path = []
+        current_node = nearest_pellet
+        while current_node != self.node:
+            path.insert(0, current_node)
+            current_node = previous_nodes[current_node]
+        # No need to insert the start_node in path as it's Pacman's current node
+
+        if path:
+            # Calculate direction to the first node in the path
+            next_node_direction = self.calculateDirection(path[0])
+            return next_node_direction
+        else:
+            return None
+
 
     def getValidKey(self):
         key_pressed = pygame.key.get_pressed()
