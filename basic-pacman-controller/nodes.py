@@ -5,7 +5,7 @@ import numpy as np
 
 class Node(object):
     def __init__(self, x, y, row, col):
-        self.position = Vector2(x, y)
+        self.position = Vector2(int(x), int(y))
         self.neighbors = {UP:None, DOWN:None, LEFT:None, RIGHT:None, PORTAL:None}
         self.access = {UP:[PACMAN, BLINKY, PINKY, INKY, CLYDE, FRUIT], 
                        DOWN:[PACMAN, BLINKY, PINKY, INKY, CLYDE, FRUIT], 
@@ -30,8 +30,8 @@ class Node(object):
                 pygame.draw.line(screen, WHITE, line_start, line_end, 4)
                 pygame.draw.circle(screen, RED, self.position.asInt(), 12)
 
-    def __str__(self):
-        return str((str(self.position), self.row, self.col)) 
+    # def __str__(self):
+    #     return str((str(self.position), self.row, self.col)) 
 
 class NodeGroup(object):
     def __init__(self, level):
@@ -123,7 +123,7 @@ class NodeGroup(object):
 
     def getNodeFromPixels(self, xpixel, ypixel):
         if (xpixel, ypixel) in self.nodesLUT.keys():
-            return self.nodesLUT[(xpixel, ypixel)]
+            return self.nodesLUT[(int(xpixel), int(ypixel))]
         return None
 
     def getNodeFromTiles(self, col, row):
@@ -167,8 +167,7 @@ class NodeGroup(object):
     def render(self, screen):
         for node in self.nodesLUT.values():
             node.render(screen)
-#############################
-    # returns a list of all nodes in (x,y) format
+# returns a list of all nodes in (x,y) format
     def getListOfNodesVector(self):
         return list(self.nodesLUT)
 
@@ -212,3 +211,6 @@ class NodeGroup(object):
             costs_dict[node] = temp_list
         # print(costs_dict)
         return costs_dict
+    
+   
+   

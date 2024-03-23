@@ -12,12 +12,17 @@ class Pellet(object):
         self.collideRadius = 2 * TILEWIDTH / 16
         self.points = 10
         self.visible = True
+        self.row = row
+        self.col = column
         
     def render(self, screen):
         if self.visible:
             adjust = Vector2(TILEWIDTH, TILEHEIGHT) / 2
             p = self.position + adjust
             pygame.draw.circle(screen, self.color, p.asInt(), self.radius)
+
+    def __str__(self):
+        return str((str(self.position), self.row, self.col))
 
 
 class PowerPellet(Pellet):
@@ -42,6 +47,7 @@ class PelletGroup(object):
         self.powerpellets = []
         self.createPelletList(pelletfile)
         self.numEaten = 0
+        self.costs = self.getPellets()
 
     def update(self, dt):
         for powerpellet in self.powerpellets:
@@ -69,3 +75,6 @@ class PelletGroup(object):
     def render(self, screen):
         for pellet in self.pelletList:
             pellet.render(screen)
+
+    def getPellets(self):
+        return [(x.row* TILEWIDTH, x.col * TILEHEIGHT) for x in self.pelletList]

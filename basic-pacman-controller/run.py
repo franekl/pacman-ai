@@ -27,7 +27,7 @@ class GameController(object):
         self.score = 0
         self.textgroup = TextGroup()
         self.lifesprites = LifeSprites(self.lives)
-        self.flashBG = False
+        self.flashBG = False 
         self.flashTime = 0.2
         self.flashTimer = 0
         self.fruitCaptured = []
@@ -53,6 +53,7 @@ class GameController(object):
         self.mazedata.obj.connectHomeNodes(self.nodes)
         # self.pacman = Pacman(self.nodes.getNodeFromTiles(*self.mazedata.obj.pacmanStart), nodes=self.nodes)
         self.pellets = PelletGroup(self.mazedata.obj.name+".txt")
+        # print([pellet.__str__() for pellet in self.pellets.pelletList])
         self.pacman = Pacman(self.nodes.getNodeFromTiles(*self.mazedata.obj.pacmanStart), nodes=self.nodes, pellets = self.pellets)
         self.ghosts = GhostGroup(self.nodes.getStartTempNode(), self.pacman)
         self.pacman.setGhostGroup(self.ghosts)
