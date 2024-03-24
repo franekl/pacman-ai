@@ -6,7 +6,6 @@ import numpy as np
 class Pellet(object):
     def __init__(self, row, column):
         self.name = PELLET
-        self.position = Vector2(column*TILEWIDTH, row*TILEHEIGHT)
         self.color = WHITE
         self.radius = int(2 * TILEWIDTH / 16)
         self.collideRadius = 2 * TILEWIDTH / 16
@@ -14,6 +13,9 @@ class Pellet(object):
         self.visible = True
         self.row = row
         self.col = column
+        self.x = row*TILEHEIGHT
+        self.y = column*TILEWIDTH
+        self.position = Vector2(self.y, self.x)
         
     def render(self, screen):
         if self.visible:
@@ -22,7 +24,7 @@ class Pellet(object):
             pygame.draw.circle(screen, self.color, p.asInt(), self.radius)
 
     def __str__(self):
-        return str((str(self.position), self.row, self.col))
+        return str((self.col *TILEWIDTH, self.row *TILEHEIGHT))
 
 
 class PowerPellet(Pellet):
@@ -77,4 +79,4 @@ class PelletGroup(object):
             pellet.render(screen)
 
     def getPellets(self):
-        return [(x.row* TILEWIDTH, x.col * TILEHEIGHT) for x in self.pelletList]
+        return [(x.col * TILEHEIGHT, x.row* TILEWIDTH) for x in self.pelletList]

@@ -151,6 +151,7 @@ class GameController(object):
     def checkPelletEvents(self):
         pellet = self.pacman.eatPellets(self.pellets.pelletList)
         if pellet:
+            self.pacman.eatenPellet(pellet)
             self.pellets.numEaten += 1
             self.updateScore(pellet.points)
             if self.pellets.numEaten == 30:

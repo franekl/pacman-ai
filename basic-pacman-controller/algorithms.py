@@ -15,6 +15,7 @@ def get_path_weight(start_node_pos, end_node_pos, pellet_positions):
 
 def dijkstra(nodes, start_node, pellet_positions):
     unvisited_nodes = list(nodes.costs) 
+    # print(unvisited_nodes)
     shortest_path = {}
     previous_nodes = {}
 
@@ -30,13 +31,11 @@ def dijkstra(nodes, start_node, pellet_positions):
                 current_min_node = node
             elif shortest_path[node] < shortest_path[current_min_node]:
                 current_min_node = node
-        # print(current_min_node)
         neighbors = nodes.getNeighbors(current_min_node)
-        # print(neighbors)
         for neighbor in neighbors:
             if neighbor in list(nodes.costs):
+                print(f"no of pellets in algo.py: {len(pellet_positions)}")
                 path_weight = get_path_weight(current_min_node, neighbor, pellet_positions)
-                print(path_weight)
                 tentative_value = shortest_path[current_min_node] + path_weight #nodes.value(current_min_node, neighbor)
                 if tentative_value < shortest_path[neighbor]:
                     shortest_path[neighbor] = tentative_value

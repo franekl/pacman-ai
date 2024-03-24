@@ -4,15 +4,17 @@ from constants import *
 import numpy as np
 
 class Node(object):
-    def __init__(self, x, y, row, col):
-        self.position = Vector2(int(x), int(y))
+    def __init__(self, x, y):
+        self.position = Vector2(x, y)
         self.neighbors = {UP:None, DOWN:None, LEFT:None, RIGHT:None, PORTAL:None}
         self.access = {UP:[PACMAN, BLINKY, PINKY, INKY, CLYDE, FRUIT], 
                        DOWN:[PACMAN, BLINKY, PINKY, INKY, CLYDE, FRUIT], 
                        LEFT:[PACMAN, BLINKY, PINKY, INKY, CLYDE, FRUIT], 
                        RIGHT:[PACMAN, BLINKY, PINKY, INKY, CLYDE, FRUIT]}
-        self.row = row
-        self.col = col
+        self.x = x
+        self.y = y
+        # self.row = row
+        # self.col = col
 
     def denyAccess(self, direction, entity):
         if entity.name in self.access[direction]:
@@ -30,8 +32,8 @@ class Node(object):
                 pygame.draw.line(screen, WHITE, line_start, line_end, 4)
                 pygame.draw.circle(screen, RED, self.position.asInt(), 12)
 
-    # def __str__(self):
-    #     return str((str(self.position), self.row, self.col)) 
+    def __str__(self):
+        return str((self.x, self.y))
 
 class NodeGroup(object):
     def __init__(self, level):
@@ -54,7 +56,7 @@ class NodeGroup(object):
             for col in list(range(data.shape[1])):
                 if data[row][col] in self.nodeSymbols:
                     x, y = self.constructKey(col+xoffset, row+yoffset)
-                    self.nodesLUT[(x, y)] = Node(int(x), int(y), row, col)
+                    self.nodesLUT[(x, y)] = Node(int(x), int(y))
 
     def constructKey(self, x, y):
         return x * TILEWIDTH, y * TILEHEIGHT
@@ -123,7 +125,7 @@ class NodeGroup(object):
 
     def getNodeFromPixels(self, xpixel, ypixel):
         if (xpixel, ypixel) in self.nodesLUT.keys():
-            return self.nodesLUT[(int(xpixel), int(ypixel))]
+            return self.nodesLUT[(xpixel, ypixel)]
         return None
 
     def getNodeFromTiles(self, col, row):

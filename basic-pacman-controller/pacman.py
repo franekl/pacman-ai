@@ -7,9 +7,11 @@ from sprites import PacmanSprites
 from algorithms import *
 from random import choice
 import sys
+
+
 class Pacman(Entity):
     def __init__(self, node, nodes, pellets):
-        Entity.__init__(self, node )
+        Entity.__init__(self, node)
         self.name = PACMAN    
         self.color = YELLOW
         self.direction = LEFT
@@ -17,9 +19,9 @@ class Pacman(Entity):
         self.alive = True
         self.sprites = PacmanSprites(self)
         self.nodes = nodes
-        self.directionMethod = self.randomDirection 
-        self.pellets = pellets
-        self.pelletPositions = self.pellets.getPellets()
+        self.directionMethod = self.goalDirectionDij 
+        self.pellets = pellets.getPellets()
+        
 
 
     def reset(self):
@@ -61,10 +63,7 @@ class Pacman(Entity):
         self.sprites.update(dt)
         self.position += self.directions[self.direction]*self.speed*dt
         directions = self.validDirections()
-        direction = self.directionMethod(directions=directions)
-        pacmanTarget = self.target
-        previous_nodes, shortest_path = dijkstra(self.nodes, pacmanTarget, self.pelletPositions)
-        print(shortest_path)
+        direction = self.goalDirectionDij(directions=directions)
         if self.overshotTarget():
             self.node = self.target
             if self.node.neighbors[PORTAL] is not None:
@@ -82,102 +81,60 @@ class Pacman(Entity):
             if self.oppositeDirection(direction):
                 self.reverseDirection()
 
-
-    # def goalDirection(self):
-    #     # Find the closest pellet using the Dijkstra algorithm
-    #     previous_nodes, _ = dijkstra(self.pellets, self.node)
-
-    #     # Set the goal to the position of the closest pellet
-    #     closest_pellet = None
-    #     closest_distance = sys.maxsize
-    #     for pellet in self.pellets:
-    #         if pellet.node in previous_nodes:
-    #             distance = previous_nodes[pellet.node]
-    #             if distance < closest_distance:
-    #                 closest_pellet = pellet
-    #                 closest_distance = distance
-
-    #     if closest_pellet:
-    #         self.goal = self.nodes.getVectorFromLUTNode(closest_pellet.node)
-
-    #     # Calculate the directions to the goal
-    #     directions = []
-    #     for direction in self.directions.values():
-    #         vec = self.node.position + direction*TILEWIDTH - self.goal
-    #         if vec.magnitudeSquared() < TILEWIDTH**2:
-    #             directions.append(direction)
-
-    #     # Choose the direction based on the Dijkstra path
-    #     if closest_pellet:
-    #         next_node = closest_pellet.node
-    #         if self.node.position[0] > next_node.position[0] and 2 in directions:
-    #             return 2
-    #         if self.node.position[0] < next_node.position[0] and -2 in directions:
-    #             return -2
-    #         if self.node.position[1] > next_node.position[1] and 1 in directions:
-    #             return 1
-    #         if self.node.position[1] < next_node.position[1] and -1 in directions:
-    #             return -1
-
-    #     return choice(directions)
-
-    def getDijkstraPath(self, directions):
+    def getDijkstraPath(self):
         # lastGhostNode = self.ghost.target
         # lastGhostNode = self.nodes.getVectorFromLUTNode(lastGhostNode)
-        pacmanTarget = self.target
+        pacmanTarget = (self.target.x, self.target.y)
         # pacmanTarget = self.nodes.getVectorFromLUTNode(pacmanTarget)
-    
-        previous_nodes, shortest_path = dijkstra(self.nodes, pacmanTarget, self.pelletPositions)
-        # print(f"Previous nodes: {previous_nodes}, Shortest path:  {shortest_path}")
-        # print(shortest_path)
-        # path = []
-        # node = lastGhostNode
-        # while node != pacmanTarget:
-        #     path.append(node)
-        #     node = previous_nodes[node]
-        # path.append(pacmanTarget)
-        # path.reverse()
+        previous_nodes, shortest_path = dijkstra(self.nodes, pacmanTarget, self.pellets)
+        path = []
+
+        min_weight_node = None
+        min_weight = float('inf')
+        for node, weight in shortest_path.items():
+            if weight < min_weight and weight > 0:
+                min_weight = weight
+                min_weight_node = node
+
+        while min_weight_node != pacmanTarget:
+            path.append(min_weight_node)
+            min_weight_node = previous_nodes[min_weight_node]
+        path.append(pacmanTarget)
+        path.reverse()
         # print(path)
-        # return path
+        return path
+
 
     # Chooses direction in which to turn based on the dijkstra
     # returned path
     def goalDirectionDij(self, directions):
-        path = self.getDijkstraPath(directions)
-        # print(f"\nPATH: {path}")
+        path = self.getDijkstraPath()
+        print(f"\nPATH: {path}")
         pacmanTarget = self.node
         pacmanTarget = self.nodes.getVectorFromLUTNode(pacmanTarget)
-        path.append(pacmanTarget)
-        nextGhostNode = path[1]
-        if pacmanTarget[0] > nextGhostNode[0] and 2 in directions : #left
+        # path.append(pacmanTarget)
+        nextMoveNode = path[1]
+        print(nextMoveNode)
+        if pacmanTarget[0] > nextMoveNode[0] and 2 in directions : #left
             return 2
-        if pacmanTarget[0] < nextGhostNode[0] and -2 in directions : #right
+        if pacmanTarget[0] < nextMoveNode[0] and -2 in directions : #right
             return -2
-        if pacmanTarget[1] > nextGhostNode[1] and 1 in directions : #up
+        if pacmanTarget[1] > nextMoveNode[1] and 1 in directions : #up
             return 1
-        if pacmanTarget[1] < nextGhostNode[1] and -1 in directions : #down
+        if pacmanTarget[1] < nextMoveNode[1] and -1 in directions : #down
             return -1
-        else:
-            # print(f"Else activated, self pacman direction: {self.ghost.direction}")
-            # print(f"Directions -> {directions}")
-            if -1 * self.ghost.direction in directions:
-                return -1 * self.ghost.direction
-            else: 
-                return choice(directions)
+        else: 
+            print("random choice decision activated")
+            return choice(directions)
+        # else:
+        #     # print(f"Else activated, self pacman direction: {self.ghost.direction}")
+        #     # print(f"Directions -> {directions}")
+        #     if -1 * self.ghost.direction in directions:
+        #         return -1 * self.ghost.direction
+        #     else: 
+        #         return choice(directions)
         
         # up 1, down -1, left 2, right -2
-
-    # def getValidKey(self):
-    #     key_pressed = pygame.key.get_pressed()
-    #     if key_pressed[K_UP]:
-    #         return UP
-    #     if key_pressed[K_DOWN]:
-    #         return DOWN
-    #     if key_pressed[K_LEFT]:
-    #         return LEFT
-    #     if key_pressed[K_RIGHT]:
-    #         return RIGHT
-    #     return STOP  
 
     def eatPellets(self, pelletList):
         for pellet in pelletList:
@@ -199,3 +156,9 @@ class Pacman(Entity):
 
     def get_dijkstra_distance(self, ghost):
         pass
+
+    def eatenPellet(self, pellet):
+        self.pellets.remove((pellet.y, pellet.x))
+        print(f"Pellets left: {len(self.pellets)}")
+        print(f"REMOVED {pellet}")
+
