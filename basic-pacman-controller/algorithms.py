@@ -7,11 +7,13 @@ def is_between(start_pos, end_pos, pellet_pos):
         return start_pos[1] == pellet_pos[1] and min(start_pos[0], end_pos[0]) <= pellet_pos[0] <= max(start_pos[0], end_pos[0])
     return False
 
+
 def get_path_weight(start_node_pos, end_node_pos, pellet_positions):
-    for pellet_pos_x, pellet_pos_y in pellet_positions:
-        if is_between(start_node_pos, end_node_pos, (pellet_pos_x, pellet_pos_y)):
-            return 1  
-    return 100  
+    pellet_count = 0
+    for pellet_pos in pellet_positions:
+        if is_between(start_node_pos, end_node_pos, pellet_pos):
+            pellet_count += 1
+    return pellet_count if pellet_count > 0 else 100
 
 def dijkstra(nodes, start_node, pellet_positions):
     unvisited_nodes = list(nodes.costs) 
@@ -34,8 +36,8 @@ def dijkstra(nodes, start_node, pellet_positions):
         neighbors = nodes.getNeighbors(current_min_node)
         for neighbor in neighbors:
             if neighbor in list(nodes.costs):
-                print(f"no of pellets in algo.py: {len(pellet_positions)}")
                 path_weight = get_path_weight(current_min_node, neighbor, pellet_positions)
+                # print(f"path_weight: {path_weight} between {current_min_node}, {neighbor}")
                 tentative_value = shortest_path[current_min_node] + path_weight #nodes.value(current_min_node, neighbor)
                 if tentative_value < shortest_path[neighbor]:
                     shortest_path[neighbor] = tentative_value

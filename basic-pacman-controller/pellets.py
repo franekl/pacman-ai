@@ -79,4 +79,4 @@ class PelletGroup(object):
             pellet.render(screen)
 
     def getPellets(self):
-        return [(x.col * TILEHEIGHT, x.row* TILEWIDTH) for x in self.pelletList]
+        return [(x.col * TILEHEIGHT, x.row * TILEWIDTH) for x in self.pelletList]

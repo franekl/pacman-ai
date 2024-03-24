@@ -21,7 +21,6 @@ class Pacman(Entity):
         self.nodes = nodes
         self.directionMethod = self.goalDirectionDij 
         self.pellets = pellets.getPellets()
-        
 
 
     def reset(self):
@@ -39,35 +38,20 @@ class Pacman(Entity):
         self.alive = False
         self.direction = STOP
 
-    def get_path_weight(start_node, end_node, pellet_positions):
-        # Simplified check; adapt based on your game's logic and geometry
-        for pellet_pos in pellet_positions:
-            if is_between(start_node.position, end_node.position, pellet_pos):
-                return 1  # Path has pellets, lower cost
-        return 100  # Path doesn't have pellets, higher cost
-
-    # def getDijkstraPath(self, directions):
-    #     pacmanTarget = self.target
-    #     previous_nodes, shortest_path = dijkstra(self.nodes, pacmanTarget)
-    #     path = []
-    #     node = lastGhostNode
-    #     while node != pacmanTarget:
-    #         path.append(node)
-    #         node = previous_nodes[node]
-    #     path.append(pacmanTarget)
-    #     path.reverse()
-    #     # print(path)
-    #     return path
-    
     def update(self, dt):	
         self.sprites.update(dt)
         self.position += self.directions[self.direction]*self.speed*dt
-        directions = self.validDirections()
-        direction = self.goalDirectionDij(directions=directions)
+        print(f"self_node: {self.node}")
+        print(f"self_target: {self.target}")
+        print(f"self_position: {self.position}")
         if self.overshotTarget():
-            self.node = self.target
+            print("TARGET OVERSHOT - PACMAN")
+            
             if self.node.neighbors[PORTAL] is not None:
                 self.node = self.node.neighbors[PORTAL]
+            directions = self.validDirections()
+            direction = self.goalDirectionDij(directions=directions)
+            self.node = self.target
             self.target = self.getNewTarget(direction)
             if self.target is not self.node:
                 self.direction = direction
@@ -77,13 +61,16 @@ class Pacman(Entity):
             if self.target is self.node:
                 self.direction = STOP
             self.setPosition()
-        else: 
-            if self.oppositeDirection(direction):
-                self.reverseDirection()
+        # else: 
+        #     directions = self.validDirections()
+        #     direction = self.goalDirectionDij(directions=directions)
+        #     if self.oppositeDirection(direction):
+        #         self.reverseDirection()
 
     def getDijkstraPath(self):
         # lastGhostNode = self.ghost.target
         # lastGhostNode = self.nodes.getVectorFromLUTNode(lastGhostNode)
+        pacmanNode = (self.node.x, self.node.y)
         pacmanTarget = (self.target.x, self.target.y)
         # pacmanTarget = self.nodes.getVectorFromLUTNode(pacmanTarget)
         previous_nodes, shortest_path = dijkstra(self.nodes, pacmanTarget, self.pellets)
@@ -92,11 +79,13 @@ class Pacman(Entity):
         min_weight_node = None
         min_weight = float('inf')
         for node, weight in shortest_path.items():
-            if weight < min_weight and weight > 0:
-                min_weight = weight
-                min_weight_node = node
+            if node != pacmanNode:
+                if weight < min_weight and weight > 0:
+                    min_weight = weight
+                    min_weight_node = node
 
         while min_weight_node != pacmanTarget:
+            # print("Is equal: ", min_weight_node, pacmanTarget)
             path.append(min_weight_node)
             min_weight_node = previous_nodes[min_weight_node]
         path.append(pacmanTarget)
@@ -110,18 +99,20 @@ class Pacman(Entity):
     def goalDirectionDij(self, directions):
         path = self.getDijkstraPath()
         print(f"\nPATH: {path}")
-        pacmanTarget = self.node
-        pacmanTarget = self.nodes.getVectorFromLUTNode(pacmanTarget)
-        # path.append(pacmanTarget)
+        pacman_start = self.target
+        pacman_start = self.nodes.getVectorFromLUTNode(pacman_start)
+
+
         nextMoveNode = path[1]
-        print(nextMoveNode)
-        if pacmanTarget[0] > nextMoveNode[0] and 2 in directions : #left
+        print(f"NEXT MOVE NODE: {nextMoveNode}, PACMAN START: {pacman_start}")
+
+        if pacman_start[0] > nextMoveNode[0] and 2 in directions : #left
             return 2
-        if pacmanTarget[0] < nextMoveNode[0] and -2 in directions : #right
+        if pacman_start[0] < nextMoveNode[0] and -2 in directions : #right
             return -2
-        if pacmanTarget[1] > nextMoveNode[1] and 1 in directions : #up
+        if pacman_start[1] > nextMoveNode[1] and 1 in directions : #up
             return 1
-        if pacmanTarget[1] < nextMoveNode[1] and -1 in directions : #down
+        if pacman_start[1] < nextMoveNode[1] and -1 in directions : #down
             return -1
         else: 
             print("random choice decision activated")
@@ -153,9 +144,6 @@ class Pacman(Entity):
         if dSquared <= rSquared:
             return True
         return False
-
-    def get_dijkstra_distance(self, ghost):
-        pass
 
     def eatenPellet(self, pellet):
         self.pellets.remove((pellet.y, pellet.x))
