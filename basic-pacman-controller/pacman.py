@@ -45,7 +45,8 @@ class Pacman(Entity):
         print(f"self_target: {self.target}")
         print(f"self_position: {self.position}")
         if self.overshotTarget():
-            print("TARGET OVERSHOT - PACMAN")
+
+            print("\n\n\nTARGET OVERSHOT - PACMAN")
             
             if self.node.neighbors[PORTAL] is not None:
                 self.node = self.node.neighbors[PORTAL]
@@ -102,9 +103,12 @@ class Pacman(Entity):
         pacman_start = self.target
         pacman_start = self.nodes.getVectorFromLUTNode(pacman_start)
 
+        pacman_start = path[0]
 
         nextMoveNode = path[1]
         print(f"NEXT MOVE NODE: {nextMoveNode}, PACMAN START: {pacman_start}")
+
+        print(directions)
 
         if pacman_start[0] > nextMoveNode[0] and 2 in directions : #left
             return 2
@@ -150,3 +154,10 @@ class Pacman(Entity):
         print(f"Pellets left: {len(self.pellets)}")
         print(f"REMOVED {pellet}")
 
+
+    def validDirection(self, direction):
+        if direction is not STOP:
+            if self.name in self.target.access[direction]:
+                if self.target.neighbors[direction] is not None:
+                    return True
+        return False

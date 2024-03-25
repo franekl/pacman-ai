@@ -34,6 +34,7 @@ def dijkstra(nodes, start_node, pellet_positions):
             elif shortest_path[node] < shortest_path[current_min_node]:
                 current_min_node = node
         neighbors = nodes.getNeighbors(current_min_node)
+        
         for neighbor in neighbors:
             if neighbor in list(nodes.costs):
                 path_weight = get_path_weight(current_min_node, neighbor, pellet_positions)
@@ -47,6 +48,7 @@ def dijkstra(nodes, start_node, pellet_positions):
         # After visiting its neighbors, we mark the node as "visited"
         unvisited_nodes.remove(current_min_node)
     
+    print(f"Shortest path: {shortest_path}")
     return previous_nodes, shortest_path
 
 

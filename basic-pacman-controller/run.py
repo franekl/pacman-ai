@@ -222,7 +222,7 @@ class GameController(object):
         self.pellets.render(self.screen)
         if self.fruit is not None:
             self.fruit.render(self.screen)
-        self.pacman.render(self.screen)
+        self.pacman.render(self.screen) 
         self.ghosts.render(self.screen)
         self.textgroup.render(self.screen)
 
