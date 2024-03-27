@@ -40,7 +40,7 @@ class Pacman(Entity):
         self.direction = STOP
 
     def update(self, dt):
-        if self.is_ghost_ahead():
+        if self.is_ghost_ahead(): #every time check whether we're about to collide with a ghost, if so then reverse a direction
             self.reverseDirection()
         self.sprites.update(dt)
         self.position += self.directions[self.direction]*self.speed*dt
@@ -68,11 +68,9 @@ class Pacman(Entity):
             self.setPosition()
 
     def getDijkstraPath(self):
-        # lastGhostNode = self.ghost.target
-        # lastGhostNode = self.nodes.getVectorFromLUTNode(lastGhostNode)
         pacmanNode = (self.node.x, self.node.y)
         pacmanTarget = (self.target.x, self.target.y)
-        # pacmanTarget = self.nodes.getVectorFromLUTNode(pacmanTarget)
+        
         previous_nodes, shortest_path = dijkstra(self.nodes, pacmanTarget, self.pellets, self.ghosts)
         path = []
 
@@ -86,7 +84,6 @@ class Pacman(Entity):
                     min_weight_node = node
 
         while min_weight_node != pacmanTarget:
-                # print("Is equal: ", min_weight_node, pacmanTarget)
                 path.append(min_weight_node)
                 min_weight_node = previous_nodes[min_weight_node]
         path.append(pacmanTarget)
@@ -158,13 +155,16 @@ class Pacman(Entity):
         return False
     
     def is_ghost_ahead(self):
+        # function checks whether the ghost is heading into pacman's direction and pacman's heading into ghost's direction (basically checks for future collision)
+
         for ghost in self.ghosts:
-            # Check for horizontal alignment and opposite directions.
+
+            # check horizontal alignment and opposite directions
             aligned_horizontally = self.position.y == ghost.position.y
             opposite_directions_horizontally = ((self.direction == LEFT and ghost.direction == RIGHT) or
                                                 (self.direction == RIGHT and ghost.direction == LEFT))
 
-            # Check for vertical alignment and opposite directions.
+            # check vertical alignment and opposite directions
             aligned_vertically = self.position.x == ghost.position.x
             opposite_directions_vertically = ((self.direction == UP and ghost.direction == DOWN) or
                                             (self.direction == DOWN and ghost.direction == UP))
