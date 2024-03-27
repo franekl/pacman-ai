@@ -38,7 +38,9 @@ class Pacman(Entity):
         self.alive = False
         self.direction = STOP
 
-    def update(self, dt):	
+    def update(self, dt):
+        
+        print(f"ghosts: {self.ghosts}")	
         self.sprites.update(dt)
         self.position += self.directions[self.direction]*self.speed*dt
         print(f"self_node: {self.node}")
@@ -47,7 +49,6 @@ class Pacman(Entity):
         if self.overshotTarget():
 
             print("\n\n\nTARGET OVERSHOT - PACMAN")
-            
             if self.node.neighbors[PORTAL] is not None:
                 self.node = self.node.neighbors[PORTAL]
             directions = self.validDirections()
@@ -62,11 +63,6 @@ class Pacman(Entity):
             if self.target is self.node:
                 self.direction = STOP
             self.setPosition()
-        # else: 
-        #     directions = self.validDirections()
-        #     direction = self.goalDirectionDij(directions=directions)
-        #     if self.oppositeDirection(direction):
-        #         self.reverseDirection()
 
     def getDijkstraPath(self):
         # lastGhostNode = self.ghost.target
@@ -121,14 +117,7 @@ class Pacman(Entity):
         else: 
             print("random choice decision activated")
             return choice(directions)
-        # else:
-        #     # print(f"Else activated, self pacman direction: {self.ghost.direction}")
-        #     # print(f"Directions -> {directions}")
-        #     if -1 * self.ghost.direction in directions:
-        #         return -1 * self.ghost.direction
-        #     else: 
-        #         return choice(directions)
-        
+       
         # up 1, down -1, left 2, right -2
 
     def eatPellets(self, pelletList):
