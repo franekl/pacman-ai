@@ -22,6 +22,8 @@ class Pacman(Entity):
         self.directionMethod = self.goalDirectionDij 
         self.pellets = pellets.getPellets()
 
+    def setGhostGroup(self, ghosts):
+        self.ghosts = ghosts
 
     def reset(self):
         Entity.reset(self)
@@ -32,15 +34,13 @@ class Pacman(Entity):
         self.sprites.reset()
         self.reverseDirection()
 
-    def setGhostGroup(self, ghosts):
-        self.ghosts = ghosts
-
     def die(self):
         self.alive = False
         self.direction = STOP
 
     def update(self, dt):
-        if self.is_ghost_ahead(): #every time check whether we're about to collide with a ghost, if so then reverse a direction
+        #check whether we're about to collide with a ghost, if so then reverse a direction
+        if self.is_ghost_ahead():
             self.reverseDirection()
         self.sprites.update(dt)
         self.position += self.directions[self.direction]*self.speed*dt
@@ -88,7 +88,7 @@ class Pacman(Entity):
                 min_weight_node = previous_nodes[min_weight_node]
         path.append(pacmanTarget)
         path.reverse()
-        # print(path)
+        print(path)
         return path
 
 
@@ -155,21 +155,22 @@ class Pacman(Entity):
         return False
     
     def is_ghost_ahead(self):
-        # function checks whether the ghost is heading into pacman's direction and pacman's heading into ghost's direction (basically checks for future collision)
+        # checks whether the ghost is heading into pacman's direction and pacman's heading into ghost's direction 
+        # basically checks for collision
 
         for ghost in self.ghosts:
 
             # check horizontal alignment and opposite directions
-            aligned_horizontally = self.position.y == ghost.position.y
-            opposite_directions_horizontally = ((self.direction == LEFT and ghost.direction == RIGHT) or
+            align_horizontally = self.position.y == ghost.position.y
+            opp_dir_horizontally = ((self.direction == LEFT and ghost.direction == RIGHT) or
                                                 (self.direction == RIGHT and ghost.direction == LEFT))
 
             # check vertical alignment and opposite directions
-            aligned_vertically = self.position.x == ghost.position.x
-            opposite_directions_vertically = ((self.direction == UP and ghost.direction == DOWN) or
+            align_vertically = self.position.x == ghost.position.x
+            opp_dir_vertically = ((self.direction == UP and ghost.direction == DOWN) or
                                             (self.direction == DOWN and ghost.direction == UP))
 
-            if ((aligned_horizontally and opposite_directions_horizontally) or
-                (aligned_vertically and opposite_directions_vertically)):
+            if ((align_horizontally and opp_dir_horizontally) or
+                (align_vertically and opp_dir_vertically)):
                     return True
         return False

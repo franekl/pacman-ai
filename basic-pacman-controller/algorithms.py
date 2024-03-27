@@ -1,64 +1,71 @@
 import sys
 
 def is_between(start_pos, end_pos, pellet_pos):
-    if start_pos[0] == end_pos[0]:  
+    # check whether there are any pellets between  the start and end positions
+    if start_pos[0] == end_pos[0]: #check if they are on the same row
+        #return true if pellet's y-coordinate is between start and end
         return start_pos[0] == pellet_pos[0] and min(start_pos[1], end_pos[1]) <= pellet_pos[1] <= max(start_pos[1], end_pos[1])
-    elif start_pos[1] == end_pos[1]: 
+    elif start_pos[1] == end_pos[1]: # same column
+        #return true if pellet's x-coordinate is between start and end
         return start_pos[1] == pellet_pos[1] and min(start_pos[0], end_pos[0]) <= pellet_pos[0] <= max(start_pos[0], end_pos[0])
-    return False
-
+    return False #if not aligned either horizontally or vertically
 
 def node_pellet_weight(node_pos, nodes, pellet_positions, depth=2):
-    if depth == 0:
+    if depth == 0: #stop recursion and return 0
         return 0  
     
     pellet_count = 0
-    neighbors = nodes.getNeighbors(node_pos)
+    neighbors = nodes.getNeighbors(node_pos) #neighbors of the current node
     
     for neighbor_pos in neighbors:
-        # Immediate neighbor pellet count
+        # count pellets on the path between the current node and each neighbor
         pellet_count += sum(1 for pellet_pos in pellet_positions if is_between(node_pos, neighbor_pos, pellet_pos))
         
-        # further pellet potential, check the neighbors
+        # For each neighbor, check their neighbors for additional pellets on their edges
         for next_neighbor_pos in nodes.getNeighbors(neighbor_pos):
             if next_neighbor_pos != node_pos:  # Avoid going back
+                #calculate the pellet weight for neighbors, decreasing depth with each call
                 pellet_count += node_pellet_weight(next_neighbor_pos, nodes, pellet_positions, depth-1)
     
-    return pellet_count
+    return pellet_count #total count of pellets found directly on the path and through further short exploration
 
 def check_ghost_proximity(ghost_pos, node_pos, end_node_pos, neighbors):
     # add a penalty in case a ghost is nearby
 
-    if is_between(node_pos, end_node_pos, ghost_pos): # direct path between node and end node
+    if is_between(node_pos, end_node_pos, ghost_pos): # is ghost on a direct path between the current node and target one?
         return 100  # ghost on a direct path = penalty 100
     
-    for neighbor in neighbors: #check paths from the node to the neighbors
+    for neighbor in neighbors: # check the neighbors, whether there's a ghost on one of their edges
         if is_between(node_pos, neighbor, ghost_pos):
             return 50  # ghost on a neighboring path = penalty 50
-    return 0 #else penalty is 0
+    return 0 # else no additional "ghost" penalty
 
 def get_path_weight(start_node_pos, end_node_pos, pellet_positions, nodes, ghosts):
-    immediate_pellet_count = sum(1 for pellet_pos in pellet_positions if is_between(start_node_pos, end_node_pos, pellet_pos)) #direct path between node and end node = check how many pellets
+    # get path weight based on the presence of pellets and ghosts
+
+    immediate_pellet_count = sum(1 for pellet_pos in pellet_positions if is_between(start_node_pos, end_node_pos, pellet_pos)) # check how many pellets on a direct path to the target
     if immediate_pellet_count > 0:
-        weight = 1 / immediate_pellet_count #weight will be lower if there are more pellets on the way
+        weight = 1 / immediate_pellet_count # the more pellets on the path, the lower the weight -> attractive path
     else:
+        #if no pellets directly on the path, we'll apply a penalty of 100 but reduce that by number of "close-by" pellets, will examine neighbors for that
         extended_potential = node_pellet_weight(end_node_pos, nodes, pellet_positions) #extended lookup for neighbor pellet potential
         weight = 100 - extended_potential  # decrease weight for nodes with higher extended potential
-        # 100 here is a penalty for taking a route that does not have any pellets on the way to the nearest node - tho that weight gets decreased the more pellets the neighbors of a target node can offer
+        # 100 here is a penalty for taking a route that does not have any pellets on the way to the nearest node...
+        # tho that weight gets decreased the more pellets the neighbors of a target node can offer
     
+    # adjust the path weight based on the proximity of the ghosts
     start_neighbors = nodes.getNeighbors(start_node_pos)
-
     for ghost in ghosts:
-        ghost_pos = (ghost.target.x, ghost.target.y) 
-        
+        ghost_pos = (ghost.target.x, ghost.target.y) #target position for each ghost
+        #add penalty based on ghost proximity to the path, also considering the neighboring paths
         weight += check_ghost_proximity(ghost_pos, start_node_pos, end_node_pos, start_neighbors)
-    return weight
+    return weight #final calculated path weight
    
 
 
 def dijkstra(nodes, start_node, pellet_positions, ghosts):
     unvisited_nodes = list(nodes.costs) 
-    # print(unvisited_nodes)
+    
     shortest_path = {}
     previous_nodes = {}
 
