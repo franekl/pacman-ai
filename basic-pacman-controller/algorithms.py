@@ -64,37 +64,38 @@ def get_path_weight(start_node_pos, end_node_pos, pellet_positions, nodes, ghost
 
 
 def dijkstra(nodes, start_node, pellet_positions, ghosts):
-    unvisited_nodes = list(nodes.costs) 
-    
-    shortest_path = {}
-    previous_nodes = {}
+    unvisited_nodes = list(nodes.costs) # init the list of nodes
+
+    shortest_path = {} #store shortest path length to each node
+    previous_nodes = {} # track the previous node for each node, helps to reconstruct the path
 
     max_value = sys.maxsize
     for node in unvisited_nodes:
-        shortest_path[node] = max_value
-    shortest_path[start_node] = 0
+        shortest_path[node] = max_value #all nodes initialied with initial distance (high number)
+    shortest_path[start_node] = 0 #start node's distance to itself is 0
 
-    while unvisited_nodes:
-        current_min_node = None
-        for node in unvisited_nodes:
+    while unvisited_nodes: #carry on until all nodes are visited
+        current_min_node = None #track the node with the current minimum distance
+        for node in unvisited_nodes: #find the node with the smallest known distance
             if current_min_node == None:
                 current_min_node = node
             elif shortest_path[node] < shortest_path[current_min_node]:
                 current_min_node = node
+
+        # go through all the neighbors of the current node
         neighbors = nodes.getNeighbors(current_min_node)
         
-        for neighbor in neighbors:
-            if neighbor in list(nodes.costs):
+        for neighbor in neighbors: 
+            if neighbor in list(nodes.costs): 
+                #get path weight considering pellets and ghosts 
                 path_weight = get_path_weight(current_min_node, neighbor, pellet_positions, nodes, ghosts)
-                tentative_value = shortest_path[current_min_node] + path_weight
-                if tentative_value < shortest_path[neighbor]:
-                    shortest_path[neighbor] = tentative_value
+                tentative_value = shortest_path[current_min_node] + path_weight #distance with weight/penalty added
+                if tentative_value < shortest_path[neighbor]: #if a new distance is shorter, update the shortest path and prev node
+                    shortest_path[neighbor] = tentative_value 
                     previous_nodes[neighbor] = current_min_node
-            
-        unvisited_nodes.remove(current_min_node)
+             
+        unvisited_nodes.remove(current_min_node) #mark the current node as visited
 
-    
-    # print(f"Shortest path: {shortest_path}")
     sorted_paths = sorted(shortest_path.items(), key=lambda item: item[1])
     print(sorted_paths)
     return previous_nodes, shortest_path

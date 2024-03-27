@@ -39,17 +39,15 @@ class Pacman(Entity):
         self.direction = STOP
 
     def update(self, dt):
-        #check whether we're about to collide with a ghost, if so then reverse a direction
-        if self.is_ghost_ahead():
+        
+        if self.is_ghost_ahead(): #check whether we're about to collide with a ghost, if so then reverse a direction
             self.reverseDirection()
         self.sprites.update(dt)
         self.position += self.directions[self.direction]*self.speed*dt
-        print(f"self_node: {self.node}")
-        print(f"self_target: {self.target}")
-        print(f"self_position: {self.position}")
+        # print(f"self_node: {self.node}")
+        # print(f"self_target: {self.target}")
+        # print(f"self_position: {self.position}")
         if self.overshotTarget():
-
-            print("\n\n\nTARGET OVERSHOT - PACMAN")
             if self.node.neighbors[PORTAL] is not None:
                 self.node = self.node.neighbors[PORTAL]
             directions = self.validDirections()
@@ -74,7 +72,6 @@ class Pacman(Entity):
         previous_nodes, shortest_path = dijkstra(self.nodes, pacmanTarget, self.pellets, self.ghosts)
         path = []
 
-
         min_weight_node = None
         min_weight = float('inf')
         for node, weight in shortest_path.items():
@@ -88,12 +85,10 @@ class Pacman(Entity):
                 min_weight_node = previous_nodes[min_weight_node]
         path.append(pacmanTarget)
         path.reverse()
-        print(path)
+        # print(path)
         return path
 
 
-    # Chooses direction in which to turn based on the dijkstra
-    # returned path
     def goalDirectionDij(self, directions):
         path = self.getDijkstraPath()
         print(f"\nPATH: {path}")
@@ -117,9 +112,7 @@ class Pacman(Entity):
         if pacman_start[1] < nextMoveNode[1] and -1 in directions : #down
             return -1
         else: 
-            # print("random choice decision activated")
             return "r"
-            # return choice(directions)
        
         # up 1, down -1, left 2, right -2
 
