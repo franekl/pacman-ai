@@ -30,6 +30,7 @@ class Pacman(Entity):
         self.alive = True
         self.image = self.sprites.getStartImage()
         self.sprites.reset()
+        self.reverseDirection()
 
     def setGhostGroup(self, ghosts):
         self.ghosts = ghosts
@@ -39,8 +40,8 @@ class Pacman(Entity):
         self.direction = STOP
 
     def update(self, dt):
-        
-        print(f"ghosts: {self.ghosts}")	
+        if self.is_ghost_ahead():
+            self.reverseDirection()
         self.sprites.update(dt)
         self.position += self.directions[self.direction]*self.speed*dt
         print(f"self_node: {self.node}")
@@ -54,6 +55,8 @@ class Pacman(Entity):
             directions = self.validDirections()
             direction = self.goalDirectionDij(directions=directions)
             self.node = self.target
+            if direction == 'r':
+                direction = self.direction * -1
             self.target = self.getNewTarget(direction)
             if self.target is not self.node:
                 self.direction = direction
@@ -70,8 +73,9 @@ class Pacman(Entity):
         pacmanNode = (self.node.x, self.node.y)
         pacmanTarget = (self.target.x, self.target.y)
         # pacmanTarget = self.nodes.getVectorFromLUTNode(pacmanTarget)
-        previous_nodes, shortest_path = dijkstra(self.nodes, pacmanTarget, self.pellets)
+        previous_nodes, shortest_path = dijkstra(self.nodes, pacmanTarget, self.pellets, self.ghosts)
         path = []
+
 
         min_weight_node = None
         min_weight = float('inf')
@@ -82,9 +86,9 @@ class Pacman(Entity):
                     min_weight_node = node
 
         while min_weight_node != pacmanTarget:
-            # print("Is equal: ", min_weight_node, pacmanTarget)
-            path.append(min_weight_node)
-            min_weight_node = previous_nodes[min_weight_node]
+                # print("Is equal: ", min_weight_node, pacmanTarget)
+                path.append(min_weight_node)
+                min_weight_node = previous_nodes[min_weight_node]
         path.append(pacmanTarget)
         path.reverse()
         # print(path)
@@ -99,11 +103,12 @@ class Pacman(Entity):
         pacman_start = self.target
         pacman_start = self.nodes.getVectorFromLUTNode(pacman_start)
 
+
         pacman_start = path[0]
 
         nextMoveNode = path[1]
         print(f"NEXT MOVE NODE: {nextMoveNode}, PACMAN START: {pacman_start}")
-
+ 
         print(directions)
 
         if pacman_start[0] > nextMoveNode[0] and 2 in directions : #left
@@ -115,8 +120,9 @@ class Pacman(Entity):
         if pacman_start[1] < nextMoveNode[1] and -1 in directions : #down
             return -1
         else: 
-            print("random choice decision activated")
-            return choice(directions)
+            # print("random choice decision activated")
+            return "r"
+            # return choice(directions)
        
         # up 1, down -1, left 2, right -2
 
@@ -148,5 +154,22 @@ class Pacman(Entity):
         if direction is not STOP:
             if self.name in self.target.access[direction]:
                 if self.target.neighbors[direction] is not None:
+                    return True
+        return False
+    
+    def is_ghost_ahead(self):
+        for ghost in self.ghosts:
+            # Check for horizontal alignment and opposite directions.
+            aligned_horizontally = self.position.y == ghost.position.y
+            opposite_directions_horizontally = ((self.direction == LEFT and ghost.direction == RIGHT) or
+                                                (self.direction == RIGHT and ghost.direction == LEFT))
+
+            # Check for vertical alignment and opposite directions.
+            aligned_vertically = self.position.x == ghost.position.x
+            opposite_directions_vertically = ((self.direction == UP and ghost.direction == DOWN) or
+                                            (self.direction == DOWN and ghost.direction == UP))
+
+            if ((aligned_horizontally and opposite_directions_horizontally) or
+                (aligned_vertically and opposite_directions_vertically)):
                     return True
         return False

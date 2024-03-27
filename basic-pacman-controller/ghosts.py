@@ -62,6 +62,8 @@ class Ghost(Entity):
         self.directionMethod = self.goalDirection
         self.homeNode.denyAccess(DOWN, self)
 
+    
+
 
 
 

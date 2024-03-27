@@ -26,16 +26,40 @@ def node_pellet_weight(node_pos, nodes, pellet_positions, depth=2):
     
     return pellet_count
 
-def get_path_weight(start_node_pos, end_node_pos, pellet_positions, nodes):
+def check_ghost_proximity(ghost_pos, node_pos, end_node_pos, neighbors):
+    # Check direct path between node_pos and end_node_pos.
+    if is_between(node_pos, end_node_pos, ghost_pos):
+        return 100  # Direct path penalty
+    # Check paths from the node to its neighbors.
+    for neighbor in neighbors:
+        if is_between(node_pos, neighbor, ghost_pos):
+            return 50  # Neighboring path penalty
+    return 0
+
+def get_path_weight(start_node_pos, end_node_pos, pellet_positions, nodes, ghosts):
     immediate_pellet_count = sum(1 for pellet_pos in pellet_positions if is_between(start_node_pos, end_node_pos, pellet_pos))
     if immediate_pellet_count > 0:
-        return 1 / immediate_pellet_count
+        weight = 1 / immediate_pellet_count
     else:
         # Use extended look-ahead for neighbor pellet potential
         extended_potential = node_pellet_weight(end_node_pos, nodes, pellet_positions)
-        return 500 - extended_potential  # Decrease weight for nodes with higher extended potential
+        weight = 100 - extended_potential  # Decrease weight for nodes with higher extended potential
     
-def dijkstra(nodes, start_node, pellet_positions):
+    start_neighbors = nodes.getNeighbors(start_node_pos)
+    end_neighbors = nodes.getNeighbors(end_node_pos)
+
+    # Loop through each ghost to adjust the path weight based on their proximity.
+    for ghost in ghosts:
+        ghost_pos = (ghost.target.x, ghost.target.y)  # Assuming ghost.position gives the correct coordinates
+        
+        # Apply proximity checks for start and end nodes and their neighbors.
+        weight += check_ghost_proximity(ghost_pos, start_node_pos, end_node_pos, start_neighbors)
+        # weight += check_ghost_proximity(ghost_pos, end_node_pos, start_node_pos, end_neighbors)  
+    return weight
+   
+
+
+def dijkstra(nodes, start_node, pellet_positions, ghosts):
     unvisited_nodes = list(nodes.costs) 
     # print(unvisited_nodes)
     shortest_path = {}
@@ -57,7 +81,7 @@ def dijkstra(nodes, start_node, pellet_positions):
         
         for neighbor in neighbors:
             if neighbor in list(nodes.costs):
-                path_weight = get_path_weight(current_min_node, neighbor, pellet_positions, nodes)
+                path_weight = get_path_weight(current_min_node, neighbor, pellet_positions, nodes, ghosts)
                 tentative_value = shortest_path[current_min_node] + path_weight
                 if tentative_value < shortest_path[neighbor]:
                     shortest_path[neighbor] = tentative_value
@@ -66,5 +90,7 @@ def dijkstra(nodes, start_node, pellet_positions):
         unvisited_nodes.remove(current_min_node)
 
     
-    print(f"Shortest path: {shortest_path}")
+    # print(f"Shortest path: {shortest_path}")
+    sorted_paths = sorted(shortest_path.items(), key=lambda item: item[1])
+    print(sorted_paths)
     return previous_nodes, shortest_path
