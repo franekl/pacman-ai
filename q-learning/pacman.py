@@ -4,9 +4,11 @@ from vector import Vector2
 from constants import *
 from entity import Entity
 from sprites import PacmanSprites
+import numpy  as np
+import os
 
 class Pacman(Entity):
-    def __init__(self, node, nodes, pellets):
+    def __init__(self, node, nodes, pellets, mode='train', q_tab_path='qt.npy'):
         Entity.__init__(self, node )
         self.name = PACMAN    
         self.color = YELLOW
@@ -16,6 +18,15 @@ class Pacman(Entity):
         self.nodes = nodes
         self.sprites = PacmanSprites(self)
         self.pellets = pellets.getPellets()
+
+        self.q_tab_path = q_tab_path
+        self.mode = mode
+        self.q_table = np.zeros((self.state_size(), len(self.actions())))
+        self.epsilon = 1.0 if mode == 'train' else 0.0 
+        self.alpha = 0.1  
+        self.gamma = 0.9  
+        if os.path.exists(q_tab_path):
+            self.q_table = np.load(q_tab_path)
 
     def setGhostGroup(self, ghosts):
         self.ghosts = ghosts
@@ -44,7 +55,7 @@ class Pacman(Entity):
         if self.overshotTarget():
             self.node = self.target
             pacman_tile, ghost_tiles = self.getState()
-            print(f"PACMAN TILE: {pacman_tile}; GHOST TILES: {ghost_tiles}")
+            print(f"PACMAN TILE: {pacman_tile}; GHOST TILES: {ghost_tiles[0]}")
             if self.node.neighbors[PORTAL] is not None:
                 self.node = self.node.neighbors[PORTAL]
             self.target = self.getNewTarget(direction)
