@@ -11,9 +11,10 @@ from text import TextGroup
 from sprites import LifeSprites
 from sprites import MazeSprites
 from mazedata import MazeData
+import argparse
 
 class GameController(object):
-    def __init__(self):
+    def __init__(self, mode='train'):
         pygame.init()
         self.screen = pygame.display.set_mode(SCREENSIZE, 0, 32)
         self.background = None
@@ -33,6 +34,7 @@ class GameController(object):
         self.fruitCaptured = []
         self.fruitNode = None
         self.mazedata = MazeData()
+        self.mode = mode
 
     def setBackground(self):
         self.background_norm = pygame.surface.Surface(SCREENSIZE).convert()
@@ -52,7 +54,7 @@ class GameController(object):
         self.mazedata.obj.setPortalPairs(self.nodes)
         self.mazedata.obj.connectHomeNodes(self.nodes)
         self.pellets = PelletGroup(self.mazedata.obj.name+".txt")
-        self.pacman = Pacman(self.nodes.getNodeFromTiles(*self.mazedata.obj.pacmanStart), nodes=self.nodes, pellets=self.pellets)
+        self.pacman = Pacman(self.nodes.getNodeFromTiles(*self.mazedata.obj.pacmanStart), nodes=self.nodes, pellets=self.pellets, mode=self.mode)
         self.pellets = PelletGroup(self.mazedata.obj.name+".txt")
         self.ghosts = GhostGroup(self.nodes.getStartTempNode(), self.pacman)
         self.pacman.setGhostGroup(self.ghosts)
@@ -272,10 +274,22 @@ class GameController(object):
 
 
 if __name__ == "__main__":
-    game = GameController()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--mode', choices=['train', 'test'], default='train')
+    args = parser.parse_args()
+    game = GameController(mode=args.mode)
     game.startGame()
-    while True:
-        game.update()
+    try:
+        while True:
+            game.update()
+    except KeyboardInterrupt:
+        if args.mode == 'train':
+            game.pacman.save_q_table()
+            print("Q-table saved.")
 
 
 
+
+
+#python run.py --mode train
+#python run.py --mode test
