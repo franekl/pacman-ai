@@ -32,12 +32,19 @@ class Pacman(Entity):
         self.alive = False
         self.direction = STOP
 
+    def getState(self):
+        pacman_tile = self.node.position
+        ghost_tiles = tuple(ghost.node.position for ghost in self.ghosts)
+        return pacman_tile, ghost_tiles
+    
     def update(self, dt):	
         self.sprites.update(dt)
         self.position += self.directions[self.direction]*self.speed*dt
         direction = self.getValidKey()
         if self.overshotTarget():
             self.node = self.target
+            pacman_tile, ghost_tiles = self.getState()
+            print(f"PACMAN TILE: {pacman_tile}; GHOST TILES: {ghost_tiles}")
             if self.node.neighbors[PORTAL] is not None:
                 self.node = self.node.neighbors[PORTAL]
             self.target = self.getNewTarget(direction)
