@@ -102,7 +102,7 @@ class State:
             self.p1.feedReward(0.1)
             self.p2.feedReward(0.5)
 
-    # Reset the board to 0s.
+    # Reset the board to 0s
     def reset(self):
         self.board = np.zeros((BOARD_ROWS, BOARD_COLS))
         self.boardHash = None
@@ -368,7 +368,7 @@ if __name__ == "__main__":
 
     st = State(p1, p2)
     print("training...")
-    st.play(50000)
+    st.play(5000)
 
     #play with human
     p1 = Player("computer", exploration_rho=0)
