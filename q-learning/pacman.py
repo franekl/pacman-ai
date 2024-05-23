@@ -129,19 +129,6 @@ class Pacman(Entity):
             if self.oppositeDirection(self.direction):
                 self.reverseDirection()
 
-
-    def getValidKey(self):
-        key_pressed = pygame.key.get_pressed()
-        if key_pressed[K_UP]:
-            return UP
-        if key_pressed[K_DOWN]:
-            return DOWN
-        if key_pressed[K_LEFT]:
-            return LEFT
-        if key_pressed[K_RIGHT]:
-            return RIGHT
-        return STOP  
-
     def eatPellets(self, pelletList):
         for pellet in pelletList:
             if self.collideCheck(pellet):
@@ -172,26 +159,3 @@ class Pacman(Entity):
                 if self.target.neighbors[direction] is not None:
                     return True
         return False
-
-        
-    def is_ghost_ahead(self):
-        # checks whether the ghost is heading into pacman's direction and pacman's heading into ghost's direction 
-        # basically checks for collision
-
-        for ghost in self.ghosts:
-
-            # check horizontal alignment and opposite directions
-            align_horizontally = self.position.y == ghost.position.y
-            opp_dir_horizontally = ((self.direction == LEFT and ghost.direction == RIGHT) or
-                                                (self.direction == RIGHT and ghost.direction == LEFT))
-
-            # check vertical alignment and opposite directions
-            align_vertically = self.position.x == ghost.position.x
-            opp_dir_vertically = ((self.direction == UP and ghost.direction == DOWN) or
-                                            (self.direction == DOWN and ghost.direction == UP))
-
-            if ((align_horizontally and opp_dir_horizontally) or
-                (align_vertically and opp_dir_vertically)):
-                    return True
-        return False
-    
