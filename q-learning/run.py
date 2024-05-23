@@ -9,7 +9,7 @@ from fruit import Fruit
 from pauser import Pause
 from text import TextGroup
 from sprites import LifeSprites
-from sprites import MazeSprites
+from sprites import MazeSprites 
 from mazedata import MazeData
 import argparse
 

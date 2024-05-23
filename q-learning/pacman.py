@@ -6,9 +6,10 @@ from entity import Entity
 from sprites import PacmanSprites
 import numpy  as np
 import os
+import pickle
 
 class Pacman(Entity):
-    def __init__(self, node, nodes, pellets, mode='train', q_tab_path='qt.npy'):
+    def __init__(self, node, nodes, pellets, mode='train', q_tab_path='qt.pkl'):
         Entity.__init__(self, node )
         self.name = PACMAN    
         self.color = YELLOW
@@ -19,14 +20,16 @@ class Pacman(Entity):
         self.sprites = PacmanSprites(self)
         self.pellets = pellets.getPellets()
         self.actions = [UP, DOWN, LEFT, RIGHT, STOP]
+
         self.q_tab_path = q_tab_path
         self.mode = mode
-        self.q_table = np.zeros((28, 33, len(self.actions)))
+        self.q_table = {}
         self.epsilon = 1.0 if mode == 'train' else 0.0 
         self.alpha = 0.1  
         self.gamma = 0.9  
         if os.path.exists(q_tab_path):
-            self.q_table = np.load(q_tab_path)
+            with open(q_tab_path, 'rb') as f:
+                self.q_table = pickle.load(f)
         
 
     def setGhostGroup(self, ghosts):
@@ -45,20 +48,31 @@ class Pacman(Entity):
         self.direction = STOP
 
     def getState(self):
-        pacman_tile = self.node.position
-        ghost_tiles = tuple(ghost.node.position for ghost in self.ghosts)
+        pacman_tile = (int(self.node.position.x), int(self.node.position.y))
+        ghost_tiles = tuple((int(ghost.node.position.x), int(ghost.node.position.y)) for ghost in self.ghosts)
         return (pacman_tile, ghost_tiles)
+
+
     
-    def chooseAction(self, state):
-        if np.random.rand() < self.epsilon:
-            return np.random.choice(self.actions)
-        else:
-            state_index = self.state_to_index(state)
-            return np.argmax(self.q_table[state_index])
-        
+    def getStateActionKey(self, state, action):
+        return (state, action)
+    
     def executeAction(self, action):
         if self.validDirection(action):
             self.direction = action
+        else:
+            self.direction = STOP
+
+    
+    def chooseAction(self, state):
+        valid_actions = [action for action in self.actions if self.validDirection(action)]
+        if not valid_actions:
+            valid_actions = [STOP]  # If no valid actions, stop
+        if np.random.rand() < self.epsilon:
+            return np.random.choice(valid_actions)
+        else:
+            state_actions = [self.q_table.get(self.getStateActionKey(state, action), 0) for action in valid_actions]
+            return valid_actions[np.argmax(state_actions)]
 
     def getReward(self):
         reward = -1
@@ -71,34 +85,35 @@ class Pacman(Entity):
         return reward
     
     def updateQTable(self, state, action, reward, new_state):
-        state_index = self.state_to_index(state)
-        new_state_index = self.state_to_index(new_state)
-        self.q_table[state_index, action] = (self.q_table[state_index, action] +
-                                             self.alpha * (reward + self.gamma * np.max(self.q_table[new_state_index]) - self.q_table[state_index, action]))
+        state_action_key = self.getStateActionKey(state, action)
+        next_state_values = [self.q_table.get(self.getStateActionKey(new_state, a), 0) for a in self.actions]
+        self.q_table[state_action_key] = self.q_table.get(state_action_key, 0) + self.alpha * (
+            reward + self.gamma * max(next_state_values) - self.q_table.get(state_action_key, 0)
+        )
 
     def state_to_index(self, state):
         pacman_tile, ghost_tiles = state
-        pacman_index = pacman_tile[0] + pacman_tile[1]
-        ghost_indices = [ghost[0] + ghost[1] for ghost in ghost_tiles]
-        return (pacman_index, tuple(ghost_indices))
-
+        pacman_index = (int(pacman_tile.x), int(pacman_tile.y))
+        ghost_indices = tuple((int(ghost.x), int(ghost.y)) for ghost in ghost_tiles)
+        return (pacman_index, ghost_indices)
     
     def save_q_table(self):
-        np.save(self.q_tab_path, self.q_table)
-    
-    def update(self, dt):	
+        with open(self.q_tab_path, 'wb') as f:
+            pickle.dump(self.q_table, f)
+
+    def update(self, dt):
         self.sprites.update(dt)
-        self.position += self.directions[self.direction]*self.speed*dt
-        state = self.getState()
-        action = self.chooseAction(state)
-        self.executeAction(action)
-        new_state = self.getState()
-        reward = self.getReward()
-        self.updateQTable(state, action, reward, new_state)
+        self.position += self.directions[self.direction] * self.speed * dt
+
         if self.overshotTarget():
             self.node = self.target
-            pacman_tile, ghost_tiles = self.getState()
-            print(f"PACMAN TILE: {pacman_tile}; GHOST TILES: {ghost_tiles[0]}")
+            state = self.getState()
+            action = self.chooseAction(state)
+            self.executeAction(action)
+            new_state = self.getState()
+            reward = self.getReward()
+            self.updateQTable(state, action, reward, new_state)
+
             if self.node.neighbors[PORTAL] is not None:
                 self.node = self.node.neighbors[PORTAL]
             self.target = self.getNewTarget(self.direction)
@@ -110,9 +125,10 @@ class Pacman(Entity):
             if self.target is self.node:
                 self.direction = STOP
             self.setPosition()
-        else: 
+        else:
             if self.oppositeDirection(self.direction):
                 self.reverseDirection()
+
 
     def getValidKey(self):
         key_pressed = pygame.key.get_pressed()
@@ -128,7 +144,6 @@ class Pacman(Entity):
 
     def eatPellets(self, pelletList):
         for pellet in pelletList:
-            print(pellet, type(pellet))
             if self.collideCheck(pellet):
                 return pellet
         return None  
@@ -152,12 +167,13 @@ class Pacman(Entity):
         return False
 
     def validDirection(self, direction):
-        if self.target is not None and direction in self.target.access:
-            if self.target.neighbors[direction] is not None:
-                return True
+        if direction is not STOP:
+            if self.name in self.target.access[direction]:
+                if self.target.neighbors[direction] is not None:
+                    return True
         return False
 
-    
+        
     def is_ghost_ahead(self):
         # checks whether the ghost is heading into pacman's direction and pacman's heading into ghost's direction 
         # basically checks for collision
