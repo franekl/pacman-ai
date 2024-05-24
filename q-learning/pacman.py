@@ -129,6 +129,7 @@ class Pacman(Entity):
             if self.oppositeDirection(self.direction):
                 self.reverseDirection()
 
+
     def eatPellets(self, pelletList):
         for pellet in pelletList:
             if self.collideCheck(pellet):
