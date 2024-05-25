@@ -8,6 +8,16 @@ import numpy  as np
 import os
 import pickle
 
+
+### FEATURE EXTRACTION ###
+
+# - are ghosts in fright mode
+# - distance to the closest pellet (mn)
+# - distance to the closest ghost (mn)
+# - number of ghosts 1 step away
+# - number of ghosts 2 steps away
+
+
 class Pacman(Entity):
     def __init__(self, node, nodes, pellets, mode='train', q_tab_path='qt.pkl'):
         Entity.__init__(self, node )
@@ -47,13 +57,27 @@ class Pacman(Entity):
         self.alive = False
         self.direction = STOP
 
+    def manhattanDistance(self, tile1, tile2):
+        return abs(tile1[0] - tile2[0]) + abs(tile1[1] - tile2[1])
+    
+    def getNearestGhostDistance(self, pacman_tile):
+        distances = [self.manhattanDistance(pacman_tile, (ghost.node.position.x // TILEWIDTH, ghost.node.position.y // TILEHEIGHT)) for ghost in self.ghosts]
+        return min(distances) if distances else float('inf')
+
+    def getNearestPelletDistance(self, pacman_tile):
+        distances = [self.manhattanDistance(pacman_tile, pellet) for pellet in self.pellets]
+        return min(distances) if distances else float('inf')
+
     def getState(self):
         pacman_tile = (int(self.node.position.x), int(self.node.position.y))
-        ghost_tiles = tuple((int(ghost.node.position.x), int(ghost.node.position.y)) for ghost in self.ghosts)
-        return (pacman_tile, ghost_tiles)
+        
+        nearest_ghost_distance = self.getNearestGhostDistance(pacman_tile)
+        nearest_pellet_distance = self.getNearestPelletDistance(pacman_tile)
 
-
+        ghosts_in_fright_mode = any(ghost.mode.current == FREIGHT for ghost in self.ghosts)
     
+        return (ghosts_in_fright_mode, nearest_pellet_distance, nearest_ghost_distance)
+
     def getStateActionKey(self, state, action):
         return (state, action)
     
