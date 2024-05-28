@@ -30,6 +30,7 @@ class Pacman(Entity):
         self.sprites = PacmanSprites(self)
         self.pellets = pellets.getPellets()
         self.actions = [UP, DOWN, LEFT, RIGHT, STOP]
+        self.setSpeed(200)
 
         self.q_tab_path = q_tab_path
         self.mode = mode
@@ -61,12 +62,13 @@ class Pacman(Entity):
         return abs(tile1[0] - tile2[0]) + abs(tile1[1] - tile2[1])
     
     def getNearestGhostDistance(self, pacman_tile):
-        distances = [self.manhattanDistance(pacman_tile, (ghost.node.position.x // TILEWIDTH, ghost.node.position.y // TILEHEIGHT)) for ghost in self.ghosts]
+        distances = [self.manhattanDistance(pacman_tile, (ghost.node.position.x, ghost.node.position.y)) for ghost in self.ghosts]
         return min(distances) if distances else float('inf')
 
     def getNearestPelletDistance(self, pacman_tile):
-        distances = [self.manhattanDistance(pacman_tile, pellet) for pellet in self.pellets]
+        distances = [self.manhattanDistance(pacman_tile, (pellet.position.x, pellet.position.y)) for pellet in self.pellets]
         return min(distances) if distances else float('inf')
+
 
     def getState(self):
         pacman_tile = (int(self.node.position.x), int(self.node.position.y))
@@ -76,7 +78,7 @@ class Pacman(Entity):
 
         ghosts_in_fright_mode = any(ghost.mode.current == FREIGHT for ghost in self.ghosts)
     
-        return (ghosts_in_fright_mode, nearest_pellet_distance, nearest_ghost_distance)
+        return (ghosts_in_fright_mode, nearest_pellet_distance, nearest_ghost_distance, pacman_tile)
 
     def getStateActionKey(self, state, action):
         return (state, action)
@@ -90,13 +92,22 @@ class Pacman(Entity):
     
     def chooseAction(self, state):
         valid_actions = [action for action in self.actions if self.validDirection(action)]
+        
         if not valid_actions:
             valid_actions = [STOP]  # If no valid actions, stop
+        
         if np.random.rand() < self.epsilon:
             return np.random.choice(valid_actions)
         else:
-            state_actions = [self.q_table.get(self.getStateActionKey(state, action), 0) for action in valid_actions]
-            return valid_actions[np.argmax(state_actions)]
+            state_actions = [(action, self.q_table.get(self.getStateActionKey(state, action), 0)) for action in valid_actions]
+            max_value = max(state_actions, key=lambda x: x[1])[1]
+            best_actions = [action for action, value in state_actions if value == max_value]
+            
+            # Prefer continuing in the current direction if it's among the best actions
+            if self.direction in best_actions:
+                return self.direction
+            else:
+                return np.random.choice(best_actions)
 
     def getReward(self):
         reward = -1
@@ -131,15 +142,16 @@ class Pacman(Entity):
 
         if self.overshotTarget():
             self.node = self.target
+            print(self.node.neighbors[PORTAL])
+            if self.node.neighbors[PORTAL] is not None:
+                print("EEEEE", self.node.neighbors[PORTAL])
+                self.node = self.node.neighbors[PORTAL]
             state = self.getState()
             action = self.chooseAction(state)
             self.executeAction(action)
             new_state = self.getState()
             reward = self.getReward()
             self.updateQTable(state, action, reward, new_state)
-
-            if self.node.neighbors[PORTAL] is not None:
-                self.node = self.node.neighbors[PORTAL]
             self.target = self.getNewTarget(self.direction)
             if self.target is not self.node:
                 self.direction = self.direction
