@@ -30,7 +30,7 @@ class Pacman(Entity):
         self.sprites = PacmanSprites(self)
         self.pellets = pellets.getPellets()
         self.actions = [UP, DOWN, LEFT, RIGHT, STOP]
-        self.setSpeed(200)
+        self.setSpeed(20)
 
         self.q_tab_path = q_tab_path
         self.mode = mode
@@ -59,15 +59,16 @@ class Pacman(Entity):
         self.direction = STOP
 
     def manhattanDistance(self, tile1, tile2):
-        return abs(tile1[0] - tile2[0]) + abs(tile1[1] - tile2[1])
+        return abs(tile1[0] - tile2[0]) + abs(tile1[1] - tile2[1]) // TILEWIDTH
     
     def getNearestGhostDistance(self, pacman_tile):
-        distances = [self.manhattanDistance(pacman_tile, (ghost.node.position.x, ghost.node.position.y)) for ghost in self.ghosts]
+        distances = [self.manhattanDistance(pacman_tile, (ghost.position.x, ghost.position.y)) for ghost in self.ghosts]
+        print(sorted(distances)[0])
         return min(distances) if distances else float('inf')
 
     def getNearestPelletDistance(self, pacman_tile):
         distances = [self.manhattanDistance(pacman_tile, (int(pellet.position.x), int(pellet.position.y))) for pellet in self.pellets]
-        # print(f"Distances: {sorted(distances)}") 
+        
         return min(distances) if distances else float('inf')
 
 
@@ -182,13 +183,24 @@ class Pacman(Entity):
     #     print(f"Pellets left: {len(self.pellets)}")
     #     print(f"REMOVED {pellet}")  
 
+    # def eatenPellet(self, pellet):
+    #     pellet_coordinates = (int(pellet.position.x), int(pellet.position.y))
+    #     print("Checking pellet coordinates:", pellet_coordinates)
+    #     # print(self.pellets, (pellet.y, pellet.x))
+    #     if pellet_coordinates in self.pellets:
+    #         print("EATING PELLET")
+    #         print(f"Pellets left: {len(self.pellets)}")
+    #         self.pellets.remove((pellet.y, pellet.x)) 
+    #         print(f"REMOVED {pellet}")     
+
     def eatenPellet(self, pellet):
-        # print(self.pellets[-1], pellet.y, pellet.x)
-        if (pellet.y, pellet.x) in self.pellets:
-            print("EATING PELLET")
-            print(f"Pellets left: {len(self.pellets)}")
-            self.pellets.remove((pellet.y, pellet.x)) 
-            print(f"REMOVED {pellet}")     
+        pellet_to_remove = next((p for p in self.pellets if (int(p.position.x), int(p.position.y)) == (int(pellet.position.x), int(pellet.position.y))), None)
+
+        if pellet_to_remove:
+            # print("EATING PELLET")
+            # print(f"Pellets left: {len(self.pellets)}")
+            self.pellets.remove(pellet_to_remove)
+            # print(f"REMOVED {pellet_to_remove}")
         
     def collideGhost(self, ghost):
         return self.collideCheck(ghost)
