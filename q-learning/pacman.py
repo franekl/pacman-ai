@@ -37,6 +37,7 @@ class Pacman(Entity):
         self.actions = [UP, DOWN, LEFT, RIGHT, STOP]
         self.setSpeed(200)
         self.current_tile = (int(self.node.position.x // TILEWIDTH), int(self.node.position.y // TILEHEIGHT))
+        self.accumulated_reward = 0
 
         self.q_tab_path = q_tab_path
         self.mode = mode
@@ -231,7 +232,8 @@ class Pacman(Entity):
             new_state = self.getState()
             # reward = self.getReward()
             # print(f"State: {state}, Action: {action}, New State: {new_state}, Reward: {reward}")
-            print(f"Updating Q-Table with State: {state}, Action: {action}, New State: {new_state}, Reward: {reward}")
+            # print(f"Updating Q-Table with State: {state}, Action: {action}, New State: {new_state}, Reward: {reward}")
+            print(len(self.q_table))
             self.updateQTable(state, action, reward, new_state)
             self.target = self.getNewTarget(self.direction)
             if self.target is not self.node:
