@@ -76,6 +76,8 @@ class Pacman(Entity):
         nearest_ghost_distance = self.getNearestGhostDistance(pacman_tile)
         nearest_pellet_distance = self.getNearestPelletDistance(pacman_tile)
 
+        print(f"Nearest pellet: {nearest_pellet_distance}")
+
         ghosts_in_fright_mode = any(ghost.mode.current == FREIGHT for ghost in self.ghosts)
     
         return (ghosts_in_fright_mode, nearest_pellet_distance, nearest_ghost_distance, pacman_tile)
@@ -94,7 +96,7 @@ class Pacman(Entity):
         valid_actions = [action for action in self.actions if self.validDirection(action)]
         
         if not valid_actions:
-            valid_actions = [STOP]  # If no valid actions, stop
+            valid_actions = [STOP] 
         
         if np.random.rand() < self.epsilon:
             return np.random.choice(valid_actions)
@@ -103,7 +105,6 @@ class Pacman(Entity):
             max_value = max(state_actions, key=lambda x: x[1])[1]
             best_actions = [action for action, value in state_actions if value == max_value]
             
-            # Prefer continuing in the current direction if it's among the best actions
             if self.direction in best_actions:
                 return self.direction
             else:
@@ -142,10 +143,10 @@ class Pacman(Entity):
 
         if self.overshotTarget():
             self.node = self.target
-            print(self.node.neighbors[PORTAL])
             if self.node.neighbors[PORTAL] is not None:
-                print("EEEEE", self.node.neighbors[PORTAL])
                 self.node = self.node.neighbors[PORTAL]
+                self.setPosition()
+                self.target = self.getNewTarget(self.direction)
             state = self.getState()
             action = self.chooseAction(state)
             self.executeAction(action)
