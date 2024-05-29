@@ -66,8 +66,10 @@ class Pacman(Entity):
         return min(distances) if distances else float('inf')
 
     def getNearestPelletDistance(self, pacman_tile):
-        distances = [self.manhattanDistance(pacman_tile, (pellet.position.x, pellet.position.y)) for pellet in self.pellets]
+        distances = [self.manhattanDistance(pacman_tile, (int(pellet.position.x), int(pellet.position.y))) for pellet in self.pellets]
+        # print(f"Distances: {sorted(distances)}") 
         return min(distances) if distances else float('inf')
+
 
 
     def getState(self):
@@ -76,7 +78,7 @@ class Pacman(Entity):
         nearest_ghost_distance = self.getNearestGhostDistance(pacman_tile)
         nearest_pellet_distance = self.getNearestPelletDistance(pacman_tile)
 
-        print(f"Nearest pellet: {nearest_pellet_distance}")
+        # print(f"Nearest pellet: {nearest_pellet_distance}")
 
         ghosts_in_fright_mode = any(ghost.mode.current == FREIGHT for ghost in self.ghosts)
     
@@ -170,14 +172,24 @@ class Pacman(Entity):
     def eatPellets(self, pelletList):
         for pellet in pelletList:
             if self.collideCheck(pellet):
+                # print("EATING PELLET", pellet)
+                self.eatenPellet(pellet)
                 return pellet
         return None  
 
+    # def eatenPellet(self, pellet):
+    #     self.pellets.remove((pellet.position.y, pellet.position.x))
+    #     print(f"Pellets left: {len(self.pellets)}")
+    #     print(f"REMOVED {pellet}")  
+
     def eatenPellet(self, pellet):
-        self.pellets.remove((pellet.y, pellet.x))
-        # print(f"Pellets left: {len(self.pellets)}")
-        # print(f"REMOVED {pellet}")  
-    
+        # print(self.pellets[-1], pellet.y, pellet.x)
+        if (pellet.y, pellet.x) in self.pellets:
+            print("EATING PELLET")
+            print(f"Pellets left: {len(self.pellets)}")
+            self.pellets.remove((pellet.y, pellet.x)) 
+            print(f"REMOVED {pellet}")     
+        
     def collideGhost(self, ghost):
         return self.collideCheck(ghost)
 
