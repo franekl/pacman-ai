@@ -35,7 +35,7 @@ class Pacman(Entity):
         self.sprites = PacmanSprites(self)
         self.pellets = pellets.getPellets()
         self.actions = [UP, DOWN, LEFT, RIGHT, STOP]
-        self.setSpeed(20)
+        self.setSpeed(200)
         self.current_tile = (int(self.node.position.x // TILEWIDTH), int(self.node.position.y // TILEHEIGHT))
 
         self.q_tab_path = q_tab_path
@@ -96,7 +96,6 @@ class Pacman(Entity):
         return float('inf')
     
     def getNearestGhostDistance(self, pacman_tile):
-        print([(ghost.node.x, ghost.node.y) for ghost in self.ghosts])
         ghost_positions = [(int(ghost.node.x), int(ghost.node.y)) for ghost in self.ghosts]
         # print(f"Pacman tile: {pacman_tile}, Ghost positions: {ghost_positions}")
         min_distance = self.bfs_distance(pacman_tile, ghost_positions)
@@ -107,7 +106,7 @@ class Pacman(Entity):
         pellet_positions = [(int(pellet.position.x), int(pellet.position.y)) for pellet in self.pellets]
         # print(f"Pacman tile: {pacman_tile}, Pellet positions: {pellet_positions}")
         min_distance = self.bfs_distance(pacman_tile, pellet_positions)
-        print(f"Nearest pellet distance: {min_distance}")
+        # print(f"Nearest pellet distance: {min_distance}")
         return min_distance
 
     def getState(self):
@@ -115,7 +114,7 @@ class Pacman(Entity):
 
         nearest_pellet_distance = self.getNearestPelletDistance(pacman_tile)
         nearest_ghost_distance = self.getNearestGhostDistance(pacman_tile)
-        print(f"Nearest ghost distance: {nearest_ghost_distance}")
+        # print(f"Nearest ghost distance: {nearest_ghost_distance}")
         ghosts_in_fright_mode = any(ghost.mode.current == FREIGHT for ghost in self.ghosts)
     
         return (ghosts_in_fright_mode, nearest_pellet_distance, nearest_ghost_distance)
@@ -189,11 +188,11 @@ class Pacman(Entity):
 
         for ghost in self.ghosts:
             if self.collideGhost(ghost):
-                print("PENALTY FOR GHOST COLLISSION -500")
+                # print("PENALTY FOR GHOST COLLISSION -500")
                 reward -= 500
         pellet = self.eatPellets(self.pellets)
         if pellet:
-            print("+10 for eating a pellet")
+            # print("+10 for eating a pellet")
             reward += 10
         return reward
     
@@ -218,7 +217,7 @@ class Pacman(Entity):
 
         self.sprites.update(dt)
         self.position += self.directions[self.direction] * self.speed * dt
-        
+        reward = self.getReward()        
         if self.overshotTarget():
 
             self.node = self.target
@@ -230,7 +229,9 @@ class Pacman(Entity):
             action = self.chooseAction(state)
             self.executeAction(action)
             new_state = self.getState()
-            reward = self.getReward()
+            # reward = self.getReward()
+            # print(f"State: {state}, Action: {action}, New State: {new_state}, Reward: {reward}")
+            print(f"Updating Q-Table with State: {state}, Action: {action}, New State: {new_state}, Reward: {reward}")
             self.updateQTable(state, action, reward, new_state)
             self.target = self.getNewTarget(self.direction)
             if self.target is not self.node:
@@ -266,7 +267,10 @@ class Pacman(Entity):
             # print(f"REMOVED {pellet_to_remove}")
         
     def collideGhost(self, ghost):
-        return self.collideCheck(ghost)
+        collision = self.collideCheck(ghost)
+        if collision:
+            print(f"Collision detected with ghost at position {ghost.position}")
+        return collision
 
     def collideCheck(self, other):
         # print(self.position, other)
@@ -275,6 +279,7 @@ class Pacman(Entity):
         dSquared = d.magnitudeSquared()
         rSquared = (self.collideRadius + other.collideRadius)**2
         if dSquared <= rSquared:
+            # print("COLLISSION")
             return True
         return False
 
