@@ -7,6 +7,8 @@ from sprites import PacmanSprites
 import numpy  as np
 import os
 import pickle
+import math
+from collections import deque
 
 
 ### FEATURE EXTRACTION ###
@@ -25,12 +27,16 @@ class Pacman(Entity):
         self.color = YELLOW
         self.direction = LEFT
         self.setBetweenNodes(LEFT)
+        self.previous_direction = LEFT
+        self.previous_state = None
+        self.previous_action = None
         self.alive = True
         self.nodes = nodes
         self.sprites = PacmanSprites(self)
         self.pellets = pellets.getPellets()
         self.actions = [UP, DOWN, LEFT, RIGHT, STOP]
         self.setSpeed(20)
+        self.current_tile = (int(self.node.position.x // TILEWIDTH), int(self.node.position.y // TILEHEIGHT))
 
         self.q_tab_path = q_tab_path
         self.mode = mode
@@ -58,41 +64,103 @@ class Pacman(Entity):
         self.alive = False
         self.direction = STOP
 
-    def manhattanDistance(self, tile1, tile2):
-        return abs(tile1[0] - tile2[0]) + abs(tile1[1] - tile2[1]) // TILEWIDTH
+
+    ### FEATURES ####
+
+
+    ### TESTING PHASE 
+    def bfs_distance(self, start, targets, debug=False):
+        queue = deque([(start, 0)])
+        visited = set()
+        visited.add(start)
+        if debug:
+            print(f"BFS started from {start} to targets {targets}")
+
+        while queue:
+            current, dist = queue.popleft()
+            if debug:
+                print(f"Visiting: {current}, Distance: {dist}")
+            if current in targets:
+                if debug:
+                    print(f"Target {current} found at distance {dist}")
+                return dist
+
+            neighbors = self.nodes.getNeighbors(current)
+            for neighbor in neighbors:
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    queue.append((neighbor, dist + 1))
+                    if debug:
+                        print(f"Neighbor {neighbor} added to queue with distance {dist + 1}")
+
+        return float('inf')
     
     def getNearestGhostDistance(self, pacman_tile):
-        distances = [self.manhattanDistance(pacman_tile, (ghost.position.x, ghost.position.y)) for ghost in self.ghosts]
-        print(sorted(distances)[0])
-        return min(distances) if distances else float('inf')
+        print([(ghost.node.x, ghost.node.y) for ghost in self.ghosts])
+        ghost_positions = [(int(ghost.node.x), int(ghost.node.y)) for ghost in self.ghosts]
+        # print(f"Pacman tile: {pacman_tile}, Ghost positions: {ghost_positions}")
+        min_distance = self.bfs_distance(pacman_tile, ghost_positions)
+        # print(f"Nearest ghost distance: {min_distance}")
+        return min_distance
 
     def getNearestPelletDistance(self, pacman_tile):
-        distances = [self.manhattanDistance(pacman_tile, (int(pellet.position.x), int(pellet.position.y))) for pellet in self.pellets]
-        
-        return min(distances) if distances else float('inf')
-
-
+        pellet_positions = [(int(pellet.position.x), int(pellet.position.y)) for pellet in self.pellets]
+        # print(f"Pacman tile: {pacman_tile}, Pellet positions: {pellet_positions}")
+        min_distance = self.bfs_distance(pacman_tile, pellet_positions)
+        print(f"Nearest pellet distance: {min_distance}")
+        return min_distance
 
     def getState(self):
         pacman_tile = (int(self.node.position.x), int(self.node.position.y))
-        
-        nearest_ghost_distance = self.getNearestGhostDistance(pacman_tile)
+
         nearest_pellet_distance = self.getNearestPelletDistance(pacman_tile)
-
-        # print(f"Nearest pellet: {nearest_pellet_distance}")
-
+        nearest_ghost_distance = self.getNearestGhostDistance(pacman_tile)
+        print(f"Nearest ghost distance: {nearest_ghost_distance}")
         ghosts_in_fright_mode = any(ghost.mode.current == FREIGHT for ghost in self.ghosts)
     
-        return (ghosts_in_fright_mode, nearest_pellet_distance, nearest_ghost_distance, pacman_tile)
+        return (ghosts_in_fright_mode, nearest_pellet_distance, nearest_ghost_distance)
+
+
+    ###
+    # def manhattanDistance(self, tile1, tile2):
+    #     return abs(tile1[0] - tile2[0]) + abs(tile1[1] - tile2[1]) // TILEWIDTH
+    
+    
+    # def getNearestGhostDistance(self, pacman_tile):
+    #     distances = [self.manhattanDistance(pacman_tile, (ghost.position.x, ghost.position.y)) for ghost in self.ghosts]
+    #     # print(sorted(distances)[0])
+    #     return min(distances) if distances else float('inf')
+
+    # def getNearestPelletDistance(self, pacman_tile):
+    #     distances = [self.manhattanDistance(pacman_tile, (int(pellet.position.x), int(pellet.position.y))) for pellet in self.pellets]
+        
+    #     return min(distances) if distances else float('inf')
+
+    # def euclideanDistance(self, pos1, pos2):
+    #     dx = pos1[0] - pos2[0]
+    #     dy = pos1[1] - pos2[1]
+    #     return math.sqrt(dx * dx + dy * dy) // TILEWIDTH
+
+    # def getNearestGhostDistance(self, pacman_tile):
+    #     distances = [self.euclideanDistance(pacman_tile, (ghost.target.x, ghost.target.y)) for ghost in self.ghosts]
+    #     # print(min(distances))
+    #     return min(distances) if distances else float('inf')
+
+    # def getNearestPelletDistance(self, pacman_tile):
+    #     distances = [self.euclideanDistance(pacman_tile, (int(pellet.position.x), int(pellet.position.y))) for pellet in self.pellets]
+    #     # print(min(distances))
+    #     return min(distances) if distances else float('inf')
 
     def getStateActionKey(self, state, action):
         return (state, action)
     
     def executeAction(self, action):
         if self.validDirection(action):
+            self.previous_direction = self.direction 
             self.direction = action
         else:
             self.direction = STOP
+
 
     
     def chooseAction(self, state):
@@ -115,11 +183,17 @@ class Pacman(Entity):
 
     def getReward(self):
         reward = -1
+        if self.direction != self.previous_direction:
+            # print("PENALTY FOR CHANGING DIRECTIONS APPLIED -5")
+            reward -= 5
+
         for ghost in self.ghosts:
             if self.collideGhost(ghost):
+                print("PENALTY FOR GHOST COLLISSION -500")
                 reward -= 500
         pellet = self.eatPellets(self.pellets)
         if pellet:
+            print("+10 for eating a pellet")
             reward += 10
         return reward
     
@@ -141,10 +215,12 @@ class Pacman(Entity):
             pickle.dump(self.q_table, f)
 
     def update(self, dt):
+
         self.sprites.update(dt)
         self.position += self.directions[self.direction] * self.speed * dt
-
+        
         if self.overshotTarget():
+
             self.node = self.target
             if self.node.neighbors[PORTAL] is not None:
                 self.node = self.node.neighbors[PORTAL]
@@ -170,6 +246,8 @@ class Pacman(Entity):
                 self.reverseDirection()
 
 
+
+
     def eatPellets(self, pelletList):
         for pellet in pelletList:
             if self.collideCheck(pellet):
@@ -177,22 +255,7 @@ class Pacman(Entity):
                 self.eatenPellet(pellet)
                 return pellet
         return None  
-
-    # def eatenPellet(self, pellet):
-    #     self.pellets.remove((pellet.position.y, pellet.position.x))
-    #     print(f"Pellets left: {len(self.pellets)}")
-    #     print(f"REMOVED {pellet}")  
-
-    # def eatenPellet(self, pellet):
-    #     pellet_coordinates = (int(pellet.position.x), int(pellet.position.y))
-    #     print("Checking pellet coordinates:", pellet_coordinates)
-    #     # print(self.pellets, (pellet.y, pellet.x))
-    #     if pellet_coordinates in self.pellets:
-    #         print("EATING PELLET")
-    #         print(f"Pellets left: {len(self.pellets)}")
-    #         self.pellets.remove((pellet.y, pellet.x)) 
-    #         print(f"REMOVED {pellet}")     
-
+    
     def eatenPellet(self, pellet):
         pellet_to_remove = next((p for p in self.pellets if (int(p.position.x), int(p.position.y)) == (int(pellet.position.x), int(pellet.position.y))), None)
 

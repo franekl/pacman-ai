@@ -11,6 +11,10 @@ class Node(object):
                        DOWN:[PACMAN, BLINKY, PINKY, INKY, CLYDE, FRUIT], 
                        LEFT:[PACMAN, BLINKY, PINKY, INKY, CLYDE, FRUIT], 
                        RIGHT:[PACMAN, BLINKY, PINKY, INKY, CLYDE, FRUIT]}
+        self.x = x
+        self.y = y
+        # self.row = row
+        # self.col = col
 
     def denyAccess(self, direction, entity):
         if entity.name in self.access[direction]:
@@ -28,18 +32,21 @@ class Node(object):
                 pygame.draw.line(screen, WHITE, line_start, line_end, 4)
                 pygame.draw.circle(screen, RED, self.position.asInt(), 12)
 
+    def __str__(self):
+        return str((self.x, self.y))
 
 class NodeGroup(object):
     def __init__(self, level):
         self.level = level
         self.nodesLUT = {}
-        self.nodeSymbols = ['+', 'P', 'n']
+        self.nodeSymbols = ['+', 'P', 'n', '-', 'p', '|', '.']
         self.pathSymbols = ['.', '-', '|', 'p']
         data = self.readMazeFile(level)
         self.createNodeTable(data)
         self.connectHorizontally(data)
         self.connectVertically(data)
         self.homekey = None
+        self.costs = self.get_nodes()
 
     def readMazeFile(self, textfile):
         return np.loadtxt(textfile, dtype='<U1')
@@ -49,7 +56,7 @@ class NodeGroup(object):
             for col in list(range(data.shape[1])):
                 if data[row][col] in self.nodeSymbols:
                     x, y = self.constructKey(col+xoffset, row+yoffset)
-                    self.nodesLUT[(x, y)] = Node(x, y)
+                    self.nodesLUT[(x, y)] = Node(int(x), int(y))
 
     def constructKey(self, x, y):
         return x * TILEWIDTH, y * TILEHEIGHT
@@ -162,3 +169,50 @@ class NodeGroup(object):
     def render(self, screen):
         for node in self.nodesLUT.values():
             node.render(screen)
+# returns a list of all nodes in (x,y) format
+    def getListOfNodesVector(self):
+        return list(self.nodesLUT)
+
+    # returns a node in (x,y) format
+    def getVectorFromLUTNode(self, node):
+        id = list(self.nodesLUT.values()).index(node)
+        listOfVectors = self.getListOfNodesVector()
+        return listOfVectors[id]
+
+    # returns neighbors of a node in LUT form
+    def getNeighborsObj(self, node):
+        node_obj = self.getNodeFromPixels(node[0], node[1])
+        return node_obj.neighbors
+
+    # returns neighbors in (x,y) format
+    def getNeighbors(self, node):
+        neighs_LUT = self.getNeighborsObj(node)
+        vals = neighs_LUT.values()
+        neighs_LUT2 = []
+        for direction in vals:
+            if not direction is None:
+                neighs_LUT2.append(direction)
+        list_neighs = []
+        for neigh in neighs_LUT2:
+            list_neighs.append(self.getVectorFromLUTNode(neigh))
+        return list_neighs
+
+    # used to initialize node system for Dijkstra algorithm
+    def get_nodes(self):
+        costs_dict = {}
+        listOfNodesPixels = self.getListOfNodesVector()
+        for node in listOfNodesPixels:
+            neigh = self.getNeighborsObj(node)
+            temp_neighs = neigh.values()
+            temp_list = []
+            for direction in temp_neighs:
+                if not direction is None:
+                    temp_list.append(1)
+                else:
+                    temp_list.append(None)
+            costs_dict[node] = temp_list
+        # print(costs_dict)
+        return costs_dict
+    
+   
+   
