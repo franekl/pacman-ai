@@ -35,9 +35,11 @@ class Pacman(Entity):
         self.sprites = PacmanSprites(self)
         self.pellets = pellets.getPellets()
         self.actions = [UP, DOWN, LEFT, RIGHT, STOP]
-        self.setSpeed(200)
+        self.setSpeed(20)
         self.current_tile = (int(self.node.position.x // TILEWIDTH), int(self.node.position.y // TILEHEIGHT))
-        self.accumulated_reward = 0
+        self.accumulated_reward = -1
+        self.collided_with_ghost = False
+        self.eaten_pellet = False
 
         self.q_tab_path = q_tab_path
         self.mode = mode
@@ -97,7 +99,7 @@ class Pacman(Entity):
         return float('inf')
     
     def getNearestGhostDistance(self, pacman_tile):
-        ghost_positions = [(int(ghost.node.x), int(ghost.node.y)) for ghost in self.ghosts]
+        ghost_positions = [(int(ghost.target.x), int(ghost.target.y)) for ghost in self.ghosts]
         # print(f"Pacman tile: {pacman_tile}, Ghost positions: {ghost_positions}")
         min_distance = self.bfs_distance(pacman_tile, ghost_positions)
         # print(f"Nearest ghost distance: {min_distance}")
@@ -112,14 +114,12 @@ class Pacman(Entity):
 
     def getState(self):
         pacman_tile = (int(self.node.position.x), int(self.node.position.y))
-
         nearest_pellet_distance = self.getNearestPelletDistance(pacman_tile)
         nearest_ghost_distance = self.getNearestGhostDistance(pacman_tile)
-        # print(f"Nearest ghost distance: {nearest_ghost_distance}")
         ghosts_in_fright_mode = any(ghost.mode.current == FREIGHT for ghost in self.ghosts)
-    
-        return (ghosts_in_fright_mode, nearest_pellet_distance, nearest_ghost_distance)
-
+        state = (ghosts_in_fright_mode, nearest_pellet_distance, nearest_ghost_distance)
+        print(f"State: {state}")
+        return state
 
     ###
     # def manhattanDistance(self, tile1, tile2):
@@ -184,17 +184,20 @@ class Pacman(Entity):
     def getReward(self):
         reward = -1
         if self.direction != self.previous_direction:
-            # print("PENALTY FOR CHANGING DIRECTIONS APPLIED -5")
             reward -= 5
 
         for ghost in self.ghosts:
             if self.collideGhost(ghost):
-                # print("PENALTY FOR GHOST COLLISSION -500")
                 reward -= 500
+                # print(f"Collision detected with ghost at position {ghost.position}")
+                return reward  # Immediate return on collision
+
         pellet = self.eatPellets(self.pellets)
         if pellet:
-            # print("+10 for eating a pellet")
             reward += 10
+            # print(f"Eating Pellet at position {pellet.position}")
+            return reward  # Immediate return on pellet eating
+
         return reward
     
     def updateQTable(self, state, action, reward, new_state):
@@ -218,23 +221,47 @@ class Pacman(Entity):
 
         self.sprites.update(dt)
         self.position += self.directions[self.direction] * self.speed * dt
-        reward = self.getReward()        
-        if self.overshotTarget():
 
+        for ghost in self.ghosts:
+            if self.collideGhost(ghost):
+                self.collided_with_ghost = True
+
+        if self.eatPellets(self.pellets):
+            self.eaten_pellet = True
+
+        if self.overshotTarget():
             self.node = self.target
             if self.node.neighbors[PORTAL] is not None:
                 self.node = self.node.neighbors[PORTAL]
                 self.setPosition()
                 self.target = self.getNewTarget(self.direction)
+
+            new_state = self.getState()
+
+            # Check if this is not the first move
+            if self.previous_state is not None and self.previous_action is not None:
+                reward = self.accumulated_reward
+                if self.collided_with_ghost:
+                    reward -= 500 
+                if self.eaten_pellet:
+                    reward += 10  
+                new_state = self.getState()
+                print(f"State: {self.previous_state}, Action: {self.previous_action}, New State: {new_state}, Accumulated Reward: {reward}")
+
+                self.updateQTable(self.previous_state, self.previous_action, reward, new_state)
+
             state = self.getState()
             action = self.chooseAction(state)
             self.executeAction(action)
-            new_state = self.getState()
-            # reward = self.getReward()
-            # print(f"State: {state}, Action: {action}, New State: {new_state}, Reward: {reward}")
-            # print(f"Updating Q-Table with State: {state}, Action: {action}, New State: {new_state}, Reward: {reward}")
-            print(len(self.q_table))
-            self.updateQTable(state, action, reward, new_state)
+
+            
+            # Set the new previous state and action
+            self.previous_state = state
+            self.previous_action = action
+
+            self.accumulated_reward=-1
+            self.collided_with_ghost = False
+            self.eaten_pellet = False
             self.target = self.getNewTarget(self.direction)
             if self.target is not self.node:
                 self.direction = self.direction
@@ -263,16 +290,16 @@ class Pacman(Entity):
         pellet_to_remove = next((p for p in self.pellets if (int(p.position.x), int(p.position.y)) == (int(pellet.position.x), int(pellet.position.y))), None)
 
         if pellet_to_remove:
-            # print("EATING PELLET")
-            # print(f"Pellets left: {len(self.pellets)}")
             self.pellets.remove(pellet_to_remove)
-            # print(f"REMOVED {pellet_to_remove}")
+            self.eaten_pellet = True
+            # print(f"Eating Pellet at position {pellet.position}")
         
     def collideGhost(self, ghost):
-        collision = self.collideCheck(ghost)
-        if collision:
-            print(f"Collision detected with ghost at position {ghost.position}")
-        return collision
+        if self.collideCheck(ghost): 
+            self.collided_with_ghost = True
+            # print(f"Collision detected with ghost at position {ghost.position}")
+            return True
+        return False
 
     def collideCheck(self, other):
         # print(self.position, other)
@@ -284,6 +311,7 @@ class Pacman(Entity):
             # print("COLLISSION")
             return True
         return False
+    
 
     def validDirection(self, direction):
         if direction is not STOP:
