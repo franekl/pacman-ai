@@ -12,6 +12,7 @@ from sprites import LifeSprites
 from sprites import MazeSprites 
 from mazedata import MazeData
 import argparse
+import pickle
 
 class GameController(object):
     def __init__(self, mode='train'):
@@ -36,6 +37,10 @@ class GameController(object):
         self.mazedata = MazeData()
         self.mode = mode
 
+        self.epsilon = 1.0
+        self.epsilon_decay = 0.997
+        self.min_epsilon = 0.05
+
     def setBackground(self):
         self.background_norm = pygame.surface.Surface(SCREENSIZE).convert()
         self.background_norm.fill(BLACK)
@@ -54,7 +59,7 @@ class GameController(object):
         self.mazedata.obj.setPortalPairs(self.nodes)
         self.mazedata.obj.connectHomeNodes(self.nodes)
         self.pellets = PelletGroup(self.mazedata.obj.name+".txt")
-        self.pacman = Pacman(self.nodes.getNodeFromTiles(*self.mazedata.obj.pacmanStart), nodes=self.nodes, pellets=self.pellets, mode=self.mode)
+        self.pacman = Pacman(self.nodes.getNodeFromTiles(*self.mazedata.obj.pacmanStart), nodes=self.nodes, pellets=self.pellets, mode=self.mode, epsilon=self.epsilon)
         self.pellets = PelletGroup(self.mazedata.obj.name+".txt")
         self.ghosts = GhostGroup(self.nodes.getStartTempNode(), self.pacman)
         self.pacman.setGhostGroup(self.ghosts)
@@ -170,6 +175,10 @@ class GameController(object):
                 self.hideEntities()
                 self.pause.setPause(pauseTime=3, func=self.nextLevel)
 
+    def save_score(self):
+        with open('scores.txt', 'a') as f:
+            f.write(f"{self.score}\n")
+
     def checkGhostEvents(self):
         for ghost in self.ghosts:
             if self.pacman.collideGhost(ghost):
@@ -186,9 +195,13 @@ class GameController(object):
                     if self.pacman.alive:
                         self.lives -=  1
                         self.lifesprites.removeImage()
-                        self.pacman.die()               
+                        self.pacman.die()
                         self.ghosts.hide()
                         if self.lives <= 0:
+                            if self.mode == 'train':
+                                self.pacman.save_q_table()
+                                self.save_score()
+                                self.epsilon = max(self.min_epsilon, self.epsilon * self.epsilon_decay)
                             self.textgroup.showText(GAMEOVERTXT)
                             self.pause.setPause(pauseTime=3, func=self.restartGame)
                         else:

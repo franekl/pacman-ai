@@ -21,7 +21,7 @@ from collections import deque
 
 
 class Pacman(Entity):
-    def __init__(self, node, nodes, pellets, mode='train', q_tab_path='qt.pkl'):
+    def __init__(self, node, nodes, pellets, mode='train', q_tab_path='qt.pkl', epsilon=1.0):
         Entity.__init__(self, node )
         self.name = PACMAN    
         self.color = YELLOW
@@ -35,21 +35,34 @@ class Pacman(Entity):
         self.sprites = PacmanSprites(self)
         self.pellets = pellets.getPellets()
         self.actions = [UP, DOWN, LEFT, RIGHT, STOP]
-        self.setSpeed(20)
+        self.setSpeed(200)
         self.current_tile = (int(self.node.position.x // TILEWIDTH), int(self.node.position.y // TILEHEIGHT))
         self.accumulated_reward = -1
         self.collided_with_ghost = False
+        self.collided_with_ghost_in_fright_mode = False
         self.eaten_pellet = False
+        self.reversed_direction = False
 
         self.q_tab_path = q_tab_path
         self.mode = mode
         self.q_table = {}
-        self.epsilon = 1.0 if mode == 'train' else 0.0 
-        self.alpha = 0.1  
+        self.epsilon = epsilon if mode == 'train' else 0.0 
+        # print(f"NEW EPSILON: {self.epsilon}")
+        self.alpha = 0.2  
         self.gamma = 0.9  
         if os.path.exists(q_tab_path):
             with open(q_tab_path, 'rb') as f:
                 self.q_table = pickle.load(f)
+
+        # print(len(self.q_table))
+        self.action_names = {
+                0: "STOP",
+                1: "UP",
+                -1: "DOWN",
+                2: "LEFT",
+                -2: "RIGHT",
+                3: "PORTAL"
+            }
         
 
     def setGhostGroup(self, ghosts):
@@ -99,27 +112,75 @@ class Pacman(Entity):
         return float('inf')
     
     def getNearestGhostDistance(self, pacman_tile):
-        ghost_positions = [(int(ghost.target.x), int(ghost.target.y)) for ghost in self.ghosts]
-        # print(f"Pacman tile: {pacman_tile}, Ghost positions: {ghost_positions}")
+        ghost_positions = [(int(ghost.node.x), int(ghost.node.y)) for ghost in self.ghosts]
         min_distance = self.bfs_distance(pacman_tile, ghost_positions)
-        # print(f"Nearest ghost distance: {min_distance}")
-        return min_distance
+        return min_distance, self.getDirectionToNearest(pacman_tile, ghost_positions)
 
     def getNearestPelletDistance(self, pacman_tile):
         pellet_positions = [(int(pellet.position.x), int(pellet.position.y)) for pellet in self.pellets]
-        # print(f"Pacman tile: {pacman_tile}, Pellet positions: {pellet_positions}")
-        min_distance = self.bfs_distance(pacman_tile, pellet_positions)
-        # print(f"Nearest pellet distance: {min_distance}")
-        return min_distance
+        min_distance = self.bfs_distance(pacman_tile, pellet_positions, debug=True)
+        return min_distance, self.getDirectionToNearest(pacman_tile, pellet_positions)
+
+    def getBinnedDistance(self, distance, bins):
+        for b in bins:
+            if distance <= b:
+                return b
+        return bins[-1]
+
+    def getDirectionToNearest(self, start, targets):
+        queue = deque([(start, None)])  # Store direction as well
+        visited = set()
+        visited.add(start)
+
+        while queue:
+            current, first_dir = queue.popleft()
+            if current in targets:
+                return first_dir
+
+            neighbors = self.nodes.getNeighbors(current)
+            for neighbor in neighbors:
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    if first_dir is None:
+                        direction = self.getDirection(current, neighbor)
+                    else:
+                        direction = first_dir
+                    queue.append((neighbor, direction))
+
+        return STOP  # If no path found
+
+    def getDirection(self, start, end):
+        if start[0] < end[0]:
+            return RIGHT
+        elif start[0] > end[0]:
+            return LEFT
+        elif start[1] < end[1]:
+            return DOWN
+        elif start[1] > end[1]:
+            return UP
+        return STOP
 
     def getState(self):
         pacman_tile = (int(self.node.position.x), int(self.node.position.y))
-        nearest_pellet_distance = self.getNearestPelletDistance(pacman_tile)
-        nearest_ghost_distance = self.getNearestGhostDistance(pacman_tile)
+        nearest_pellet_distance, pellet_direction = self.getNearestPelletDistance(pacman_tile)
+        nearest_ghost_distance, ghost_direction = self.getNearestGhostDistance(pacman_tile)
+        
+        pellet_bins = [1,2,3,4,5,6,7, 8, 9, 10, 15, 30, 45]
+        ghost_bins = [1,2,3,4,5,6,7, 8, 9, 10, 15, 30, 45]
+        
+        binned_pellet_distance = self.getBinnedDistance(nearest_pellet_distance, pellet_bins)
+        binned_ghost_distance = self.getBinnedDistance(nearest_ghost_distance, ghost_bins)
+        
         ghosts_in_fright_mode = any(ghost.mode.current == FREIGHT for ghost in self.ghosts)
-        state = (ghosts_in_fright_mode, nearest_pellet_distance, nearest_ghost_distance)
-        print(f"State: {state}")
+        # ghost_dir_translated = self.action_names.get(ghost_direction, "UNKNOWN")
+        # print(f"GHOST DIRECTION: {ghost_dir_translated}")
+        # pellet_dir_translated = self.action_names.get(pellet_direction, "UNKNOWN")
+        # print(f"PELLET DIRECTION: {pellet_dir_translated}")
+        state = (ghosts_in_fright_mode, binned_pellet_distance, binned_ghost_distance, pellet_direction, ghost_direction)
         return state
+    
+    
+   
 
     ###
     # def manhattanDistance(self, tile1, tile2):
@@ -161,7 +222,7 @@ class Pacman(Entity):
         else:
             self.direction = STOP
 
-
+    
     
     def chooseAction(self, state):
         valid_actions = [action for action in self.actions if self.validDirection(action)]
@@ -180,25 +241,6 @@ class Pacman(Entity):
                 return self.direction
             else:
                 return np.random.choice(best_actions)
-
-    def getReward(self):
-        reward = -1
-        if self.direction != self.previous_direction:
-            reward -= 5
-
-        for ghost in self.ghosts:
-            if self.collideGhost(ghost):
-                reward -= 500
-                # print(f"Collision detected with ghost at position {ghost.position}")
-                return reward  # Immediate return on collision
-
-        pellet = self.eatPellets(self.pellets)
-        if pellet:
-            reward += 10
-            # print(f"Eating Pellet at position {pellet.position}")
-            return reward  # Immediate return on pellet eating
-
-        return reward
     
     def updateQTable(self, state, action, reward, new_state):
         state_action_key = self.getStateActionKey(state, action)
@@ -217,51 +259,71 @@ class Pacman(Entity):
         with open(self.q_tab_path, 'wb') as f:
             pickle.dump(self.q_table, f)
 
+    def oppositeDirection_ques(self, direction):
+        opposite_directions = {UP: DOWN, DOWN: UP, LEFT: RIGHT, RIGHT: LEFT}
+        return self.previous_direction == opposite_directions.get(direction, None)
+
     def update(self, dt):
 
         self.sprites.update(dt)
         self.position += self.directions[self.direction] * self.speed * dt
 
+        if self.oppositeDirection_ques(self.direction):
+                self.reversed_direction = True
         for ghost in self.ghosts:
             if self.collideGhost(ghost):
-                self.collided_with_ghost = True
+                if ghost.mode.current == FREIGHT:
+                    self.collided_with_ghost_in_fright_mode = True
+                else:
+                    self.collided_with_ghost = True
 
         if self.eatPellets(self.pellets):
             self.eaten_pellet = True
 
         if self.overshotTarget():
+        # Calculate reward for the previous state-action pair
+            reward = self.accumulated_reward
+            
+
+            if self.reversed_direction:
+                reward -= 6
+            if self.collided_with_ghost:
+                reward -= 350
+            if self.collided_with_ghost_in_fright_mode:
+                reward += 20
+            if self.eaten_pellet:
+                reward += 12
+
+            if self.previous_state is not None and self.previous_action is not None:
+                action_name = self.action_names.get(self.previous_action, "UNKNOWN")
+                new_state = self.getState()
+                # print(f"TILE: {self.node.position}, State: {self.previous_state}, Action: {action_name}, New State: {new_state}, Accumulated Reward: {reward}")
+                self.updateQTable(self.previous_state, self.previous_action, reward, new_state)
+
+
+            # Reset accumulated rewards and flags
+            self.accumulated_reward = -5
+            self.collided_with_ghost = False
+            self.collided_with_ghost_in_fright_mode = False
+            self.eaten_pellet = False
+            self.reversed_direction = False
+
+            # Update the node and target
             self.node = self.target
             if self.node.neighbors[PORTAL] is not None:
                 self.node = self.node.neighbors[PORTAL]
                 self.setPosition()
                 self.target = self.getNewTarget(self.direction)
 
+            # Determine new state and choose action
             new_state = self.getState()
-
-            # Check if this is not the first move
-            if self.previous_state is not None and self.previous_action is not None:
-                reward = self.accumulated_reward
-                if self.collided_with_ghost:
-                    reward -= 500 
-                if self.eaten_pellet:
-                    reward += 10  
-                new_state = self.getState()
-                print(f"State: {self.previous_state}, Action: {self.previous_action}, New State: {new_state}, Accumulated Reward: {reward}")
-
-                self.updateQTable(self.previous_state, self.previous_action, reward, new_state)
-
-            state = self.getState()
-            action = self.chooseAction(state)
+            action = self.chooseAction(new_state)
             self.executeAction(action)
 
-            
-            # Set the new previous state and action
-            self.previous_state = state
+            # Store the new state and action as previous for the next iteration
+            self.previous_state = new_state
             self.previous_action = action
 
-            self.accumulated_reward=-1
-            self.collided_with_ghost = False
-            self.eaten_pellet = False
             self.target = self.getNewTarget(self.direction)
             if self.target is not self.node:
                 self.direction = self.direction
@@ -300,6 +362,7 @@ class Pacman(Entity):
             # print(f"Collision detected with ghost at position {ghost.position}")
             return True
         return False
+    
 
     def collideCheck(self, other):
         # print(self.position, other)
