@@ -53,7 +53,7 @@ class Pacman(Entity):
         if os.path.exists(q_tab_path):
             with open(q_tab_path, 'rb') as f:
                 self.q_table = pickle.load(f)
-
+        print(len(self.q_table))
         # print(len(self.q_table))
         self.action_names = {
                 0: "STOP",
@@ -83,31 +83,26 @@ class Pacman(Entity):
 
     ### FEATURES ####
 
-
-    ### TESTING PHASE 
-    def bfs_distance(self, start, targets, debug=False):
+    def bfs_distance(self, start, targets):
+        
+        #queue with a starting node and distance 0
         queue = deque([(start, 0)])
+        #visited set
         visited = set()
         visited.add(start)
-        if debug:
-            print(f"BFS started from {start} to targets {targets}")
 
-        while queue:
-            current, dist = queue.popleft()
-            if debug:
-                print(f"Visiting: {current}, Distance: {dist}")
-            if current in targets:
-                if debug:
-                    print(f"Target {current} found at distance {dist}")
-                return dist
+        while queue: #loop until queue empty
+            #pop front node from queue and get the current node and distance
+            current, dist = queue.popleft() 
+            if current in targets: #is the current node in the target nodes
+                return dist #if yes get the distance
 
-            neighbors = self.nodes.getNeighbors(current)
+            #get neighbors of the current node
+            neighbors = self.nodes.getNeighbors(current) 
             for neighbor in neighbors:
                 if neighbor not in visited:
-                    visited.add(neighbor)
-                    queue.append((neighbor, dist + 1))
-                    if debug:
-                        print(f"Neighbor {neighbor} added to queue with distance {dist + 1}")
+                    visited.add(neighbor) #add the neighbor to the list
+                    queue.append((neighbor, dist + 1)) #add the neighbor and updated distance to queue
 
         return float('inf')
     
@@ -118,7 +113,7 @@ class Pacman(Entity):
 
     def getNearestPelletDistance(self, pacman_tile):
         pellet_positions = [(int(pellet.position.x), int(pellet.position.y)) for pellet in self.pellets]
-        min_distance = self.bfs_distance(pacman_tile, pellet_positions, debug=True)
+        min_distance = self.bfs_distance(pacman_tile, pellet_positions)
         return min_distance, self.getDirectionToNearest(pacman_tile, pellet_positions)
 
     def getBinnedDistance(self, distance, bins):
@@ -165,17 +160,13 @@ class Pacman(Entity):
         nearest_pellet_distance, pellet_direction = self.getNearestPelletDistance(pacman_tile)
         nearest_ghost_distance, ghost_direction = self.getNearestGhostDistance(pacman_tile)
         
-        pellet_bins = [1,2,3,4,5,6,7, 8, 9, 10, 15, 30, 45]
-        ghost_bins = [1,2,3,4,5,6,7, 8, 9, 10, 15, 30, 45]
+        pellet_bins = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 30, 45]
+        ghost_bins = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 30, 45]
         
         binned_pellet_distance = self.getBinnedDistance(nearest_pellet_distance, pellet_bins)
         binned_ghost_distance = self.getBinnedDistance(nearest_ghost_distance, ghost_bins)
         
         ghosts_in_fright_mode = any(ghost.mode.current == FREIGHT for ghost in self.ghosts)
-        # ghost_dir_translated = self.action_names.get(ghost_direction, "UNKNOWN")
-        # print(f"GHOST DIRECTION: {ghost_dir_translated}")
-        # pellet_dir_translated = self.action_names.get(pellet_direction, "UNKNOWN")
-        # print(f"PELLET DIRECTION: {pellet_dir_translated}")
         state = (ghosts_in_fright_mode, binned_pellet_distance, binned_ghost_distance, pellet_direction, ghost_direction)
         return state
     
@@ -315,12 +306,12 @@ class Pacman(Entity):
                 self.setPosition()
                 self.target = self.getNewTarget(self.direction)
 
-            # Determine new state and choose action
+            #new state and choose action
             new_state = self.getState()
             action = self.chooseAction(new_state)
             self.executeAction(action)
 
-            # Store the new state and action as previous for the next iteration
+            # store the new state and action as previous for the next iteration
             self.previous_state = new_state
             self.previous_action = action
 
