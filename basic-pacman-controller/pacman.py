@@ -127,6 +127,7 @@ class Pacman(Entity):
         return self.collideCheck(ghost)
 
     def collideCheck(self, other):
+        print(self.position, other.position, "(", other, ")")
         d = self.position - other.position
         dSquared = d.magnitudeSquared()
         rSquared = (self.collideRadius + other.collideRadius)**2
@@ -134,11 +135,10 @@ class Pacman(Entity):
             return True
         return False
 
-    def eatenPellet(self, pellet):
-        self.pellets.remove((pellet.y, pellet.x))
-        print(f"Pellets left: {len(self.pellets)}")
-        print(f"REMOVED {pellet}")
-
+    # def eatenPellet(self, pellet):
+    #     self.pellets.remove((pellet.y, pellet.x))
+    #     print(f"Pellets left: {len(self.pellets)}")
+    #     print(f"REMOVED {pellet}")
 
     def validDirection(self, direction):
         if direction is not STOP:
